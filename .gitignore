@@ -35,3 +35,6 @@ backend/app.db
 backend/.venv/
 backend/__pycache__/
 *.pyc
+
+# 依赖锁文件（可由 npm install 重新生成）
+package-lock.json
