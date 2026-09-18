@@ -1,0 +1,21 @@
+services:
+  api:
+    build: ./backend
+    container_name: rjq-api
+    env_file: .env
+    environment:
+      - DATABASE_URL=sqlite:////data/app.db
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+    expose:
+      - "8000"
+
+  web:
+    build: ./diary-app
+    container_name: rjq-web
+    depends_on:
+      - api
+    restart: unless-stopped
+    ports:
+      - "8080:80"
