@@ -4,18 +4,34 @@ from sqlalchemy import (
     JSON,
     Boolean,
     Column,
-    DateTime,
     ForeignKey,
     Integer,
     String,
 )
 from sqlalchemy.orm import relationship
+from sqlalchemy.types import DateTime as SADateTime
 
 from .database import Base
 
 
 def utcnow():
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    # 存的是 UTC（保留时区标记，序列化时自动带 +00:00）
+    return datetime.now(timezone.utc)
+
+
+class UTCDateTime(SADateTime):
+    """读出时间列时统一补充 UTC 时区，保证前端 new Date() 按 UTC 正确换算本地时间。"""
+
+    def result_processor(self, dialect, coltype):
+        origin = getattr(SADateTime, "result_processor")(self, dialect, coltype)
+
+        def process(value):
+            value = origin(value) if origin else value
+            if value is not None and value.tzinfo is None:
+                return value.replace(tzinfo=timezone.utc)
+            return value
+
+        return process
 
 
 class User(Base):
@@ -24,7 +40,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(64), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
-    created_at = Column(DateTime, default=utcnow)
+    created_at = Column(UTCDateTime, default=utcnow)
 
     entries = relationship("JournalEntry", back_populates="owner", cascade="all, delete-orphan")
     todos = relationship("Todo", back_populates="owner", cascade="all, delete-orphan")
@@ -43,8 +59,8 @@ class JournalEntry(Base):
     entry_type = Column(String(32), nullable=False, default="daily")  # daily/inspiration/behavior
     is_pinned = Column(Boolean, nullable=False, default=False)
     date = Column(String(10), nullable=True)                   # 逻辑日期 YYYY-MM-DD（可空）
-    created_at = Column(DateTime, default=utcnow)
-    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
+    created_at = Column(UTCDateTime, default=utcnow)
+    updated_at = Column(UTCDateTime, default=utcnow, onupdate=utcnow)
 
     owner = relationship("User", back_populates="entries")
 
@@ -60,9 +76,9 @@ class Todo(Base):
     priority = Column(Integer, nullable=False, default=2)      # 1高 2中 3低
     status = Column(String(16), nullable=False, default="pending")  # pending/in_progress/done
     due_date = Column(String(10), nullable=True)               # YYYY-MM-DD
-    remind_at = Column(DateTime, nullable=True)
+    remind_at = Column(UTCDateTime, nullable=True)
     synced_to_calendar = Column(Boolean, nullable=False, default=False)
-    completed_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=utcnow)
+    completed_at = Column(UTCDateTime, nullable=True)
+    created_at = Column(UTCDateTime, default=utcnow)
 
     owner = relationship("User", back_populates="todos")
