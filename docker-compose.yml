@@ -1,6 +1,8 @@
 services:
   api:
+    image: ghcr.io/healson/life-journal:api
     build: ./backend
+    pull_policy: always
     container_name: life-journal-api
     env_file: .env
     environment:
@@ -12,7 +14,9 @@ services:
       - "8000"
 
   web:
+    image: ghcr.io/healson/life-journal:web
     build: ./diary-app
+    pull_policy: always
     container_name: life-journal-web
     depends_on:
       - api

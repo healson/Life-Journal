@@ -53,3 +53,18 @@ jobs:
           tags: ghcr.io/healson/life-journal:web
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # 两个镜像推送完成后，清理 GHCR 上被覆盖的无 tag 旧版本（每次升级产生的残留）
+  prune:
+    runs-on: ubuntu-latest
+    needs: [build-api, build-web]
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - uses: actions/delete-package-versions@v5
+        with:
+          package-name: life-journal
+          package-type: container
+          delete-only-untagged-versions: "true"
+          min-versions-to-keep: 10
