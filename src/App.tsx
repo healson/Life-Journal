@@ -7,6 +7,7 @@ import { ConvertDrawer } from "./components/ConvertDrawer"
 import { PinLock } from "./components/PinLock"
 import { ResizablePane } from "./components/ResizablePane"
 import { EnvelopeLayer } from "./components/EnvelopeLayer"
+import { ConfirmHost } from "./components/ConfirmDialog"
 import { store, DRAFT_ID } from "./store"
 import { useStore } from "./lib/observer"
 import { Wand2 } from "lucide-react"
@@ -19,7 +20,12 @@ export default function App() {
 
   // 未解锁时显示密码锁
   if (!state.isUnlocked) {
-    return <PinLock onSuccess={() => store.state.isUnlocked} />
+    return (
+      <>
+        <PinLock onSuccess={() => store.state.isUnlocked} />
+        <ConfirmHost />
+      </>
+    )
   }
 
   const selectedEntry = state.entries.find((e) => e.id === state.selectedEntryId)
@@ -73,6 +79,9 @@ export default function App() {
 
       {/* 信封飞行动画层（全屏固定 z-index 1000） */}
       <EnvelopeLayer />
+
+      {/* 全局居中确认框 */}
+      <ConfirmHost />
     </div>
   )
 }

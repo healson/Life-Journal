@@ -1,6 +1,7 @@
 import { Pin, Trash2 } from "lucide-react"
 import { store } from "../store"
-import { cn, formatRelative } from "../lib/utils"
+import { confirmDialog } from "./ConfirmDialog"
+import { cn, formatRelative, buildSnippet } from "../lib/utils"
 import type { JournalEntry } from "../types"
 import { MOOD_LABELS } from "../types"
 
@@ -9,9 +10,43 @@ interface Props {
   selected: boolean
 }
 
+/** 把文本中的关键词用 <mark> 高亮（不区分大小写，全部命中） */
+function highlight(text: string, keyword: string) {
+  if (!keyword) return text
+  const parts: React.ReactNode[] = []
+  let rest = text
+  let k = 0
+  while (rest.length > 0) {
+    const lower = rest.toLowerCase()
+    const kw = keyword.toLowerCase()
+    const idx = lower.indexOf(kw)
+    if (idx === -1) {
+      parts.push(rest)
+      break
+    }
+    if (idx > 0) parts.push(rest.slice(0, idx))
+    parts.push(
+      <mark
+        key={k++}
+        className="rounded px-0.5 bg-yellow-200 text-inherit font-semibold text-primary-dark"
+      >
+        {rest.slice(idx, idx + kw.length)}
+      </mark>,
+    )
+    rest = rest.slice(idx + kw.length)
+  }
+  return parts
+}
+
 export function EntryCard({ entry, selected }: Props) {
   const mood = entry.mood ? MOOD_LABELS[entry.mood] : null
   const todoCount = store.state.todos.filter((t) => t.entryId === entry.id).length
+  const keyword = store.state.searchQuery?.trim() || ""
+
+  // 搜索时：摘要取关键词附近片段；否则显示原文开头
+  const snippet = keyword
+    ? buildSnippet(entry.plainText, keyword)
+    : entry.plainText
 
   return (
     <div
@@ -42,13 +77,13 @@ export function EntryCard({ entry, selected }: Props) {
               <Pin className="w-3 h-3 text-accent flex-shrink-0" fill="currentColor" />
             )}
             <h3 className="font-semibold text-text truncate text-sm">
-              {entry.title || "无标题"}
+              {highlight(entry.title || "无标题", keyword)}
             </h3>
           </div>
 
-          {/* 预览 —— 单行省略，让卡片保持紧凑 */}
+          {/* 预览 —— 搜索时显示关键词附近片段，单行省略；关键词高亮 */}
           <p className="mt-1 text-xs text-text-secondary whitespace-nowrap overflow-hidden text-ellipsis leading-relaxed">
-            {entry.plainText}
+            {highlight(snippet, keyword)}
           </p>
 
           {/* 底部：标签 + 时间 + 待办数 —— 单行不换行 */}
@@ -75,9 +110,15 @@ export function EntryCard({ entry, selected }: Props) {
 
             {/* 操作按钮 */}
             <button
-              onClick={(e) => {
+              onClick={async (e) => {
                 e.stopPropagation()
-                if (confirm("确定删除这条日记吗？")) store.deleteEntry(entry.id)
+                const ok = await confirmDialog({
+                  title: "确定删除这条日记吗？",
+                  message: "删除后无法恢复，这段回忆将从本子里轻轻撕下。",
+                  confirmText: "删除",
+                  tone: "danger",
+                })
+                if (ok) store.deleteEntry(entry.id)
               }}
               className="opacity-0 group-hover:opacity-100 text-text-muted hover:text-danger transition-all flex-shrink-0"
               title="删除"
