@@ -1,29 +1,29 @@
 @import "tailwindcss";
 
 @theme {
-  /* 主色调：奶油底 + 深墨绿 */
-  --color-background: #FAF8F5;
+  /* ========== 默认主题：鼠尾草之晨（奶油白 × 雾感绿） ========== */
+  --color-background: #F9F6F0;
   --color-surface: #FFFFFF;
-  --color-surface-hover: #F5F2EE;
-  --color-surface-active: #EFEAE3;
+  --color-surface-hover: #F2EFE8;
+  --color-surface-active: #EAE5DB;
 
-  --color-primary: #1F4B3F;
-  --color-primary-light: #2A6B57;
-  --color-primary-dark: #16372D;
+  --color-primary: #658970;
+  --color-primary-light: #85A58C;
+  --color-primary-dark: #4E6E58;
 
-  --color-accent: #C8863F;
-  --color-accent-light: #E5A64B;
+  --color-accent: #E29A6B;
+  --color-accent-light: #EEB486;
 
-  --color-text: #1C1917;
-  --color-text-secondary: #57534E;
-  --color-text-muted: #A8A29E;
+  --color-text: #37332D;
+  --color-text-secondary: #6B645A;
+  --color-text-muted: #ADA496;
 
-  --color-border: #E7E2DC;
-  --color-border-light: #F0EBE5;
+  --color-border: #E6DFD3;
+  --color-border-light: #F0EAE0;
 
-  --color-danger: #DC2626;
-  --color-success: #16A34A;
-  --color-warning: #D97706;
+  --color-danger: #DE7C7C;
+  --color-success: #79AB70;
+  --color-warning: #E2A55C;
 
   /* 心情颜色 */
   --color-mood-happy: #FBBF24;
@@ -33,18 +33,143 @@
   --color-mood-sad: #94A3B8;
   --color-mood-angry: #EF4444;
 
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 20px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
 
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
-  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-card: 0 2px 10px rgba(120, 100, 70, 0.05), 0 1px 3px rgba(120, 100, 70, 0.04);
+  --shadow-card-hover: 0 8px 24px rgba(120, 100, 70, 0.10), 0 2px 6px rgba(120, 100, 70, 0.05);
+  --shadow-popover: 0 12px 36px rgba(110, 92, 66, 0.14), 0 3px 10px rgba(110, 92, 66, 0.06);
 
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-serif: "Noto Serif SC", Georgia, serif;
   --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+
+/* ========== 主题：蜜桃奶茶 ========== */
+:root[data-theme="peach"] {
+  --color-background: #FDF3ED;
+  --color-surface: #FFFBF8;
+  --color-surface-hover: #F9ECE3;
+  --color-surface-active: #F4E0D3;
+
+  --color-primary: #D6765C;
+  --color-primary-light: #E89A84;
+  --color-primary-dark: #B85F48;
+
+  --color-accent: #F0B269;
+  --color-accent-light: #F7C98C;
+
+  --color-text: #483730;
+  --color-text-secondary: #80675B;
+  --color-text-muted: #BC9F92;
+
+  --color-border: #F0DCCF;
+  --color-border-light: #F8EAE0;
+
+  --color-danger: #E07A6F;
+  --color-success: #88AB6E;
+  --color-warning: #ECA85F;
+
+  --shadow-card: 0 2px 10px rgba(200, 120, 90, 0.06), 0 1px 3px rgba(200, 120, 90, 0.04);
+  --shadow-card-hover: 0 8px 24px rgba(200, 120, 90, 0.12), 0 2px 6px rgba(200, 120, 90, 0.05);
+  --shadow-popover: 0 12px 36px rgba(190, 110, 80, 0.15), 0 3px 10px rgba(190, 110, 80, 0.06);
+}
+
+/* ========== 主题：薰衣草午后 ========== */
+:root[data-theme="lavender"] {
+  --color-background: #F5F3FA;
+  --color-surface: #FDFCFF;
+  --color-surface-hover: #EEEAF7;
+  --color-surface-active: #E5DFF2;
+
+  --color-primary: #8B7CBD;
+  --color-primary-light: #A99DD4;
+  --color-primary-dark: #6E60A2;
+
+  --color-accent: #84B4D1;
+  --color-accent-light: #A5CADE;
+
+  --color-text: #3B3749;
+  --color-text-secondary: #696379;
+  --color-text-muted: #A49CB4;
+
+  --color-border: #E1DCEF;
+  --color-border-light: #EDEAF7;
+
+  --color-danger: #D9808A;
+  --color-success: #7FAE8C;
+  --color-warning: #DFA563;
+
+  --shadow-card: 0 2px 10px rgba(110, 96, 170, 0.06), 0 1px 3px rgba(110, 96, 170, 0.04);
+  --shadow-card-hover: 0 8px 24px rgba(110, 96, 170, 0.12), 0 2px 6px rgba(110, 96, 170, 0.05);
+  --shadow-popover: 0 12px 36px rgba(100, 86, 160, 0.15), 0 3px 10px rgba(100, 86, 160, 0.06);
+}
+
+/* ========== 主题：手绘小本子（纸张 + 手绘线条） ========== */
+:root[data-theme="sketch"] {
+  --color-background: #FAF4E5;
+  --color-surface: #FFFDF4;
+  --color-surface-hover: #F4ECD8;
+  --color-surface-active: #EDE2C6;
+
+  --color-primary: #55705B;
+  --color-primary-light: #729078;
+  --color-primary-dark: #3F5645;
+
+  --color-accent: #D87F4E;
+  --color-accent-light: #E89A6C;
+
+  --color-text: #36322A;
+  --color-text-secondary: #675F4E;
+  --color-text-muted: #A29678;
+
+  --color-border: #D7C8A4;
+  --color-border-light: #E6DAB8;
+
+  --color-danger: #CD5F53;
+  --color-success: #7A9B54;
+  --color-warning: #D99A44;
+
+  /* 手绘风：实体偏移阴影，像蜡笔勾的盒子 */
+  --shadow-card: 2px 3px 0 rgba(94, 76, 40, 0.14);
+  --shadow-card-hover: 3px 4px 0 rgba(94, 76, 40, 0.18);
+  --shadow-popover: 4px 5px 0 rgba(94, 76, 40, 0.16);
+
+  /* 楷体手写感（各平台楷体字体兜底） */
+  --font-sans: "Kaiti SC", "STKaiti", "KaiTi", "DFKai-SB", "楷体",
+    "Comic Sans MS", "Chalkboard SE", "Segoe Print", cursive;
+}
+
+/* 手绘风：纸张圆点纹理 */
+:root[data-theme="sketch"] body {
+  background-image: radial-gradient(rgba(120, 98, 55, 0.10) 1px, transparent 1.4px);
+  background-size: 22px 22px;
+}
+
+/* 手绘风：描边元素加粗为 2px 手绘线（只影响显式 .border，不碰分割线） */
+:root[data-theme="sketch"] .border {
+  border-width: 2px;
+}
+
+/* 手绘风：不规则圆角，像随手画的框（不动圆形/药丸） */
+:root[data-theme="sketch"] .rounded-md {
+  border-radius: 10px 7px 12px 8px / 8px 11px 7px 10px;
+}
+:root[data-theme="sketch"] .rounded-lg {
+  border-radius: 15px 9px 16px 10px / 10px 15px 9px 14px;
+}
+:root[data-theme="sketch"] .rounded-xl {
+  border-radius: 19px 11px 20px 12px / 12px 19px 11px 17px;
+}
+:root[data-theme="sketch"] .rounded-2xl {
+  border-radius: 23px 14px 25px 15px / 15px 24px 14px 22px;
+}
+
+/* 手绘风：所有 lucide 线条图标走 SVG 抖动滤镜，呈现手绘笔触 */
+:root[data-theme="sketch"] svg.lucide {
+  filter: url("#lj-sketch-wobble");
 }
 
 * {
@@ -231,6 +356,27 @@ input, textarea, select {
   background: var(--color-text-muted);
 }
 
+/* 局部隐藏横向滚动条（标签区等） */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* emoji 面板细滚动条 */
+.emoji-picker-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.emoji-picker-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+.emoji-picker-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
 /* 动画 */
 @keyframes fade-in-up {
   from {
@@ -302,4 +448,26 @@ input, textarea, select {
 
 .animate-fade-in-up {
   animation: fade-in-up 0.3s ease-out forwards;
+}
+
+/* ========== 居中弹窗（确认框 / 设置） ========== */
+@keyframes lj-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes lj-dialog-pop {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.lj-overlay {
+  animation: lj-overlay-in 0.22s ease-out forwards;
+}
+.lj-dialog {
+  animation: lj-dialog-pop 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
