@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from . import auth
 from .database import get_db
+from .models import User
 
 # tokenUrl 仅用于 OpenAPI 文档展示；本应用从 Authorization Bearer 头取 token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
