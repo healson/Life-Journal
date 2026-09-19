@@ -7,7 +7,7 @@ from sqlalchemy import text
 from . import auth as auth_mod
 from .database import Base, SessionLocal, engine
 from .models import User
-from .routers import auth, backup, entries, todos
+from .routers import auth, backup, entries, todos, upload
 
 # 建表
 Base.metadata.create_all(bind=engine)
@@ -88,6 +88,7 @@ app.include_router(auth.router)
 app.include_router(entries.router)
 app.include_router(todos.router)
 app.include_router(backup.router)
+app.include_router(upload.router)
 
 
 @app.get("/api/health")
