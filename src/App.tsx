@@ -34,13 +34,13 @@ export default function App() {
   const editing = selectedEntry || isDrafting
 
   return (
-    <div className="h-full flex bg-background">
+    <div className="h-full flex bg-background overflow-hidden">
       {/* 左侧边栏（可拖动宽度） */}
       <ResizablePane initialWidth={260} minWidth={200} maxWidth={420} side="right">
         <Sidebar onViewChange={setView} />
       </ResizablePane>
 
-      {/* 中间栏 + 右侧编辑区（整体再套一层） */}
+      {/* 中间栏 + 右侧编辑区整体 */}
       <main className="flex-1 flex min-w-0 relative">
         {view === "entries" ? (
           <>
@@ -50,14 +50,14 @@ export default function App() {
             </ResizablePane>
 
             {/* 右侧：编辑器 */}
-            <div className="flex-1 min-w-0 flex flex-col relative">
+            <div className="flex-1 min-w-0 min-h-0 flex flex-col relative">
               {editing ? (
                 <MarkdownEditor entryId={state.selectedEntryId!} />
               ) : (
                 <EmptyState onNew={() => store.createEntry({ entryType: "daily" })} />
               )}
 
-              {/* 浮动 "转待办" 按钮 */}
+              {/* 浮动转待办按钮 */}
               {editing && (
                 <button
                   onClick={() => store.openConvertDrawer()}
@@ -93,15 +93,8 @@ function EmptyState({ onNew }: { onNew: () => void }) {
         <span className="text-5xl">📝</span>
       </div>
       <h2 className="text-xl font-bold text-text mb-2">选择或创建一条日记</h2>
-      <p className="text-text-secondary text-sm mb-6 max-w-sm">
-        从中间栏选择一条已有的日记开始编辑，或者创建一条新的。
-      </p>
-      <button
-        onClick={onNew}
-        className="px-6 py-2.5 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-light transition-colors"
-      >
-        创建第一条日记
-      </button>
+      <p className="text-text-secondary text-sm mb-6 max-w-sm">从中间栏选择一条已有的日记开始编辑，或者创建一条新的。</p>
+      <button onClick={onNew} className="px-6 py-2.5 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-light transition-colors">创建第一条日记</button>
     </div>
   )
 }
