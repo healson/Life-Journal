@@ -156,3 +156,27 @@ export function apiCompleteTodo(id: string) {
 export function apiDeleteTodo(id: string) {
   return request(`/todos/${id}`, { method: "DELETE" })
 }
+
+// ── Uploads: 图片上传 ──
+export function apiUploadImage(file: File) {
+  const form = new FormData()
+  form.append("file", file)
+  const token = getToken()
+  return new Promise<string>((resolve, reject) => {
+    fetch(`${BASE}/uploads`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      body: form, // 不手动设 Content-Type，让浏览器自动带 boundary
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => null)
+        if (!res.ok) {
+          const msg = typeof data?.detail === "string" ? data.detail : "上传失败"
+          reject(new ApiError(res.status, msg as string))
+          return
+        }
+        resolve(data.url as string)
+      })
+      .catch(reject)
+  })
+}
