@@ -67,6 +67,30 @@ export function apiRegister(username: string, password: string) {
   return request<AuthToken>("/auth/register", { method: "POST", body: { username, password } })
 }
 
+// ── Auth: 用户与账户 ──
+export interface UserDto { id: number; username: string; is_admin: boolean; created_at: string }
+export function apiMe() { return request<UserDto>("/auth/me") }
+export function apiChangePassword(old_password: string, new_password: string) {
+  return request<{ ok: boolean }>("/auth/change-password", { method: "POST", body: { old_password, new_password } })
+}
+export function apiListUsers() { return request<UserDto[]>("/auth/users") }
+export function apiCreateUser(username: string, password: string, is_admin: boolean) {
+  return request<UserDto>("/auth/users", { method: "POST", body: { username, password, is_admin } })
+}
+export function apiResetPassword(userId: string | number, new_password: string) {
+  return request<{ ok: boolean }>(`/auth/users/${userId}/password`, { method: "POST", body: { new_password } })
+}
+export function apiDeleteUser(userId: string | number) {
+  return request<{ ok: boolean }>(`/auth/users/${userId}`, { method: "DELETE" })
+}
+
+// ── Backup: 数据备份与恢复 ──
+export function apiExportData() { return request<any>("/backup/export") }
+export function apiImportData(data: unknown) {
+  return request<{ ok: boolean }>("/backup/import", { method: "POST", body: data })
+}
+export function apiClearAll() { return request<{ ok: boolean }>("/backup/all", { method: "DELETE" }) }
+
 // ── Entries ──
 export interface EntryPayload {
   title?: string

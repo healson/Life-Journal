@@ -2,6 +2,13 @@ export type Mood = "happy" | "calm" | "energetic" | "tired" | "sad" | "angry"
 
 export type EntryType = "daily" | "inspiration" | "behavior"
 
+export interface User {
+  id: string
+  username: string
+  isAdmin: boolean
+  createdAt: string
+}
+
 export interface Todo {
   id: string
   title: string

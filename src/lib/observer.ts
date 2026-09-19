@@ -12,7 +12,7 @@ export function useStore() {
 }
 
 // 让 store 的 mutate 方法自动调用 emitChange
-type StoreMethodKey = "unlock" | "lock" | "resetPassword" | "selectDate" |
+type StoreMethodKey = "lock" | "selectDate" |
   "selectEntry" | "createEntry" | "updateEntry" | "deleteEntry" | "togglePin" |
   "startDraft" | "updateDraft" | "commitDraft" |
   "setFilter" | "setSearch" | "openConvertDrawer" | "closeConvertDrawer" |
@@ -28,7 +28,7 @@ const patch = (key: StoreMethodKey) => {
 }
 
 ;[
-  "unlock", "lock", "resetPassword",
+  "lock",
   "selectDate",
   "selectEntry", "createEntry", "updateEntry", "deleteEntry", "togglePin",
   "startDraft", "updateDraft", "commitDraft",

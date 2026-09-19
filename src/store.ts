@@ -2,19 +2,16 @@ import type { JournalEntry, Todo } from "./types"
 import { emitChange } from "./lib/events"
 import {
   apiCompleteTodo, apiCreateEntry, apiCreateTodo, apiDeleteEntry, apiDeleteTodo,
-  apiListEntries, apiListTodos, apiLogin, apiRegister, apiTogglePin,
+  apiListEntries, apiListTodos, apiLogin, apiMe, apiRegister, apiTogglePin,
   apiUpdateEntry, apiUpdateTodo, getToken, setToken,
 } from "./api/client"
-
-/** 后端账号用户名（个人日记固定单一账号） */
-const AUTH_USER = "default"
 
 /** 草稿条目的固定 id 标记（不在 entries 数组中） */
 export const DRAFT_ID = "__draft__"
 
 interface State {
   isUnlocked: boolean
-  hasPassword: boolean
+  currentUser: { username: string; isAdmin: boolean } | null
   selectedDate: string | null
   entries: JournalEntry[]
   todos: Todo[]
@@ -27,15 +24,9 @@ interface State {
   bootError: string | null
 }
 
-const LOCK_KEY = "ryjq_lock_unlocked"
-const PASS_KEY = "ryjq_pass"
-
-const hasPassword = localStorage.getItem(PASS_KEY) !== null
-const wasUnlocked = localStorage.getItem(LOCK_KEY) === "1" && hasPassword
-
 const state: State = {
-  isUnlocked: wasUnlocked,
-  hasPassword,
+  isUnlocked: !!getToken(),
+  currentUser: null,
   selectedDate: null,
   entries: [],
   todos: [],
@@ -144,62 +135,52 @@ async function loadData(fromUnlock = false) {
 export const store = {
   get state() { return state },
 
-  // ── 认证 / 解锁 ──
-  /**
-   * 解锁 = 用 PIN 作为密码登录/注册后端账号，并加载数据。
-   * 返回 Promise<boolean>，PinLock 需 await。
-   */
-  async unlock(pin: string): Promise<boolean> {
-    const saved = localStorage.getItem(PASS_KEY)
-    const expected = saved ?? "111111"
-    if (pin !== expected) return false
-
-    // 先尝试登录；若账号不存在（401）则注册
+  // ── 认证 / 多用户 ──
+  async refreshMe() {
     try {
-      const r = await apiLogin(AUTH_USER, pin)
-      setToken(r.access_token)
-    } catch (e: any) {
-      if (e?.status === 401) {
-        try {
-          const r = await apiRegister(AUTH_USER, pin)
-          setToken(r.access_token)
-        } catch (registerErr: any) {
-          // 若后端不可用 / 注册失败，回退为纯前端解锁（空数据）
-          state.bootError = registerErr?.message ?? "无法连接后端服务"
-          setToken(null)
-        }
-      } else {
-        state.bootError = e?.message ?? "无法连接后端服务"
-        setToken(null)
-      }
+      const me = await apiMe()
+      state.currentUser = { username: me.username, isAdmin: !!me.is_admin }
+    } catch {
+      state.currentUser = null
     }
-
-    state.isUnlocked = true
-    if (!saved) {
-      localStorage.setItem(PASS_KEY, pin)
-      state.hasPassword = true
-    }
-    localStorage.setItem(LOCK_KEY, "1")
-
-    if (getToken()) await loadData(true)
-    return true
   },
 
+  async login(username: string, password: string): Promise<void> {
+    const r = await apiLogin(username, password)
+    setToken(r.access_token)
+    state.isUnlocked = true
+    await this.refreshMe()
+    await loadData(true)
+  },
+
+  async register(username: string, password: string): Promise<void> {
+    const r = await apiRegister(username, password)
+    setToken(r.access_token)
+    state.isUnlocked = true
+    await this.refreshMe()
+    await loadData(true)
+  },
+
+  /** 退出登录：清空 token、当前用户与本地数据 */
   lock() {
     state.isUnlocked = false
-    localStorage.removeItem(LOCK_KEY)
+    state.currentUser = null
+    state.entries = []
+    state.todos = []
+    state.draft = null
+    state.selectedEntryId = null
+    setToken(null)
   },
 
-  resetPassword(newPin: string) {
-    localStorage.setItem(PASS_KEY, newPin)
-    state.hasPassword = true
-    state.isUnlocked = true
-    localStorage.setItem(LOCK_KEY, "1")
-  },
-
-  /** 应用启动时若已解锁且有 token，后台拉取数据 */
+  /** 应用启动时若已有 token，后台拉取数据 */
   async init() {
     if (!state.isUnlocked || !getToken()) return
+    await this.refreshMe()
+    await loadData()
+  },
+
+  /** 重新从后端拉取当前用户数据（导入/清空后调用） */
+  async refresh() {
     await loadData()
   },
 
