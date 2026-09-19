@@ -228,10 +228,10 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
         role="dialog"
         aria-modal="true"
         aria-label="设置"
-        className="lj-dialog w-full max-w-md bg-surface rounded-2xl shadow-popover border border-border-light overflow-hidden"
+        className="lj-dialog w-full max-w-md bg-surface rounded-2xl shadow-popover border border-border-light overflow-hidden flex flex-col max-h-[90vh]"
       >
         {/* 头部 */}
-        <div className="flex items-start justify-between px-6 pt-6 pb-4">
+        <div className="flex items-start justify-between px-6 pt-6 pb-4 flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-primary/12 flex items-center justify-center">
               <Palette className="w-5 h-5 text-primary" />
@@ -252,7 +252,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
         </div>
 
         {/* 标签页 */}
-        <div className="px-6 pb-3 flex gap-1.5">
+        <div className="px-6 pb-3 flex gap-1.5 flex-shrink-0">
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -271,6 +271,8 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
           ))}
         </div>
 
+        {/* 可滚动内容区 */}
+        <div className="flex-1 min-h-0 overflow-y-auto lj-scroll">
         {/* 外观 */}
         {tab === "appearance" && (
           <div className="px-6 pb-6">
@@ -605,6 +607,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
             )}
           </div>
         )}
+        </div>
       </div>
     </div>,
     document.body,
