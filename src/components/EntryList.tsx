@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { Search, History, Calendar, CheckSquare, Plus } from "lucide-react"
+import { Search, X, History, Calendar, CheckSquare, Plus } from "lucide-react"
 import { store } from "../store"
 import { useStore } from "../lib/observer"
 import { EntryCard } from "./EntryCard"
@@ -98,8 +98,21 @@ export function EntryList() {
               setSearchLocal(v)
               store.setSearch(v) // 同步到全局，供卡片高亮关键词
             }}
-            className="w-full pl-9 pr-3 py-2 rounded-lg bg-surface border border-border-light text-sm outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10 transition-all"
+            className="w-full pl-9 pr-9 py-2 rounded-lg bg-surface border border-border-light text-sm outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10 transition-all"
           />
+          {searchLocal && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchLocal("")
+                store.setSearch("")
+              }}
+              title="清除搜索"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full text-text-muted hover:text-text hover:bg-surface-hover transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
         {/* 状态条 */}
