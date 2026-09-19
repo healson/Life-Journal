@@ -80,6 +80,9 @@ export function apiCreateUser(username: string, password: string, is_admin: bool
 export function apiResetPassword(userId: string | number, new_password: string) {
   return request<{ ok: boolean }>(`/auth/users/${userId}/password`, { method: "POST", body: { new_password } })
 }
+export function apiUpdateUsername(userId: string | number, username: string) {
+  return request<{ ok: boolean }>(`/auth/users/${userId}/username`, { method: "POST", body: { username } })
+}
 export function apiDeleteUser(userId: string | number) {
   return request<{ ok: boolean }>(`/auth/users/${userId}`, { method: "DELETE" })
 }

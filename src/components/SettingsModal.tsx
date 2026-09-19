@@ -7,10 +7,11 @@ import {
 import { THEMES, applyTheme, getStoredTheme, type ThemeId } from "../lib/theme"
 import { cn } from "../lib/utils"
 import { store } from "../store"
+import { emitChange } from "../lib/events"
 import { confirmDialog } from "./ConfirmDialog"
 import {
   apiChangePassword, apiClearAll, apiCreateUser, apiDeleteUser, apiExportData,
-  apiImportData, apiListUsers, apiResetPassword, type UserDto,
+  apiImportData, apiListUsers, apiResetPassword, apiUpdateUsername, type UserDto,
 } from "../api/client"
 
 type Tab = "appearance" | "data" | "account"
@@ -34,6 +35,8 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const [newUser, setNewUser] = useState({ username: "", password: "", is_admin: false })
   const [resetId, setResetId] = useState<number | null>(null)
   const [resetPwd, setResetPwd] = useState("")
+  const [renameId, setRenameId] = useState<number | null>(null)
+  const [renameName, setRenameName] = useState("")
   const [userMsg, setUserMsg] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -47,6 +50,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       setPwdMsg(null)
       setUserMsg(null)
       setResetId(null)
+      setRenameId(null)
     }
   }, [open])
 
@@ -171,6 +175,23 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       setUserMsg("✅ 密码已重置")
     } catch (err: any) {
       setUserMsg(`❌ ${err?.message ?? "重置失败"}`)
+    }
+  }
+
+  const handleRename = async (id: number) => {
+    const name = renameName.trim()
+    if (!name) { setUserMsg("请输入新用户名"); return }
+    if (name.length < 3) { setUserMsg("用户名至少 3 位"); return }
+    setUserMsg(null)
+    try {
+      await apiUpdateUsername(id, name)
+      setRenameId(null); setRenameName("")
+      setUserMsg("✅ 用户名已更新")
+      await loadUsers()
+      await store.refreshMe()
+      emitChange() // 侧栏用户名是当前账号时同步刷新
+    } catch (err: any) {
+      setUserMsg(`❌ ${err?.message ?? "修改失败"}`)
     }
   }
 
@@ -471,7 +492,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                   !userMsg && (
                     <button
                       type="button"
-                      onClick={() => loadUsers().catch((e: any) => setUserMsg(`” ${e?.message ?? "加载失败"}`))}
+                      onClick={() => loadUsers().catch((e: any) => setUserMsg(`❌ ${e?.message ?? "加载失败"}`))}
                       className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-surface-hover text-sm font-medium text-text-secondary hover:bg-surface-active transition-colors"
                     >
                       <RefreshCw className="w-3.5 h-3.5" />
@@ -528,6 +549,42 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                             className="px-2 py-1 text-xs font-medium text-text-secondary hover:text-primary hover:bg-primary/10 rounded-md flex-shrink-0"
                           >
                             重置密码
+                          </button>
+                        )}
+
+                        {/* 修改用户名（行内输入） */}
+                        {renameId === u.id ? (
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              autoComplete="off"
+                              value={renameName}
+                              onChange={(e) => setRenameName(e.target.value)}
+                              placeholder="新用户名"
+                              className="w-24 px-2 py-1 text-xs rounded-md bg-background border border-border outline-none focus:border-primary/40"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleRename(u.id)}
+                              className="px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10 rounded-md flex-shrink-0"
+                            >
+                              确认
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setRenameId(null); setRenameName("") }}
+                              className="px-2 py-1 text-xs text-text-muted hover:bg-surface-hover rounded-md flex-shrink-0"
+                            >
+                              取消
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => { setRenameId(u.id); setRenameName(u.username) }}
+                            className="px-2 py-1 text-xs font-medium text-text-secondary hover:text-primary hover:bg-primary/10 rounded-md flex-shrink-0"
+                          >
+                            改名
                           </button>
                         )}
 

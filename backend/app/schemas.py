@@ -44,6 +44,10 @@ class UserPasswordResetRequest(BaseModel):
     new_password: str = Field(min_length=6, max_length=128)
 
 
+class UpdateUsernameRequest(BaseModel):
+    username: str = Field(min_length=3, max_length=64)
+
+
 # ── Backup ──
 class ImportRequest(BaseModel):
     entries: list[dict] = []

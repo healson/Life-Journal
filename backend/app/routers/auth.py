@@ -10,6 +10,7 @@ from ..schemas import (
     LoginRequest,
     RegisterRequest,
     TokenResponse,
+    UpdateUsernameRequest,
     UserCreateRequest,
     UserOut,
     UserPasswordResetRequest,
@@ -98,6 +99,27 @@ def reset_user_password(
     if user is None:
         raise HTTPException(status_code=404, detail="用户不存在")
     user.hashed_password = auth.hash_password(body.new_password)
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/users/{user_id}/username", response_model=dict)
+def update_username(
+    user_id: int,
+    body: UpdateUsernameRequest,
+    db: Session = Depends(get_db),
+    current: User = Depends(get_current_user),
+):
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    # 仅允许修改自己的用户名，或由管理员修改任意用户
+    if user.id != current.id and not current.is_admin:
+        raise HTTPException(status_code=403, detail="仅管理员可修改他人用户名")
+    existing = auth.get_user_by_username(db, body.username)
+    if existing is not None and existing.id != user.id:
+        raise HTTPException(status_code=409, detail="用户名已存在")
+    user.username = body.username
     db.commit()
     return {"ok": True}
 
