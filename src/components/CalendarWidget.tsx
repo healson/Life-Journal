@@ -84,6 +84,12 @@ export function CalendarWidget() {
 
   const selectedDate = state.selectedDate
 
+  // 回到今天：视图切到今天所在年月
+  const goToday = () => {
+    const n = new Date()
+    setViewDate(new Date(n.getFullYear(), n.getMonth(), 1))
+  }
+
   return (
     <div
       data-envelope-target
@@ -100,6 +106,12 @@ export function CalendarWidget() {
         <div className="text-sm font-semibold text-text">
           {year} 年 {monthNames[month]} 月
         </div>
+        <button
+          onClick={goToday}
+          className="px-1.5 py-0.5 rounded text-[11px] text-text-muted hover:text-primary hover:bg-primary/10 transition-colors"
+        >
+          今天
+        </button>
         <button
           onClick={() => setViewDate(new Date(year, month + 1, 1))}
           className="p-1 rounded hover:bg-surface-hover text-text-muted hover:text-text transition-colors"

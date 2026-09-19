@@ -1,8 +1,10 @@
-import { LogOut, Anchor } from "lucide-react"
+import { LogOut, Anchor, Settings } from "lucide-react"
+import { useState } from "react"
 import { store } from "../store"
 import { useStore } from "../lib/observer"
 import { cn } from "../lib/utils"
 import { CalendarWidget } from "./CalendarWidget"
+import { SettingsModal } from "./SettingsModal"
 
 interface Props {
   onViewChange: (v: "entries" | "todos") => void
@@ -10,6 +12,7 @@ interface Props {
 
 export function Sidebar({ onViewChange }: Props) {
   const state = useStore()
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   // 标签云
   const tagCloud = (() => {
@@ -42,7 +45,7 @@ export function Sidebar({ onViewChange }: Props) {
   // 注意：日记用了将来的日期（如下个月）时不参与过去日均的分子分母之外的判断，
   // 日均 = 本年日记总数 /（今天 - 首次记录的当天差 + 1）
   const dTotal = activeEntries.length
-  const daysDiff = Math.max(1, Math.ceil((today.getTime() - firstDate.getTime()) / 86400000) + 1)
+  const daysDiff = Math.max(1, Math.floor((today.getTime() - firstDate.getTime()) / 86400000) + 1)
   const dailyAvg = (dTotal / daysDiff).toFixed(1)
 
   return (
@@ -56,6 +59,13 @@ export function Sidebar({ onViewChange }: Props) {
           <div className="text-sm font-bold text-text truncate">人生记趣录</div>
           <div className="text-[10px] text-text-muted">Life Journal</div>
         </div>
+        <button
+          onClick={() => setSettingsOpen(true)}
+          className="p-1.5 rounded-md text-text-muted hover:text-primary hover:bg-primary/10 transition-colors"
+          title="设置"
+        >
+          <Settings className="w-3.5 h-3.5" />
+        </button>
         <button
           onClick={() => store.lock()}
           className="p-1.5 rounded-md text-text-muted hover:text-danger hover:bg-danger/10 transition-colors"
@@ -108,16 +118,13 @@ export function Sidebar({ onViewChange }: Props) {
               </div>
             </button>
 
-            {/* 完成率 → 穿透到待办 */}
-            <button
-              onClick={() => { store.selectDate(null); onViewChange("todos") }}
-              className="text-left p-2.5 rounded-lg bg-accent/5 border border-accent/10 hover:bg-accent/10 hover:border-accent/20 transition-colors cursor-pointer"
-            >
+            {/* 完成率 → 纯展示，不穿透 */}
+            <div className="text-left p-2.5 rounded-lg bg-accent/5 border border-accent/10">
               <div className="text-[10px] text-text-muted">完成率</div>
               <div className="text-sm font-bold text-accent leading-tight">
                 {completionRate}<span className="text-xs font-normal ml-0.5">%</span>
               </div>
-            </button>
+            </div>
           </div>
         </SidebarSection>
 
@@ -151,6 +158,8 @@ export function Sidebar({ onViewChange }: Props) {
           </div>
         </SidebarSection>
       </div>
+
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </aside>
   )
 }
