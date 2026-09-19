@@ -24,6 +24,9 @@ interface Props {
   entryId: string
 }
 
+// 星期表头
+const WEEKDAY_HEADERS: string[] = ["一", "二", "三", "四", "五", "六", "日"]
+
 export function MarkdownEditor({ entryId }: Props) {
   const state = useStore()
   const isDraft = entryId === DRAFT_ID
@@ -376,7 +379,7 @@ function DateInputWithEnvelope({ currentDate, onPick }: {
 
           {/* 星期表头 */}
           <div className="grid grid-cols-7 mb-1 text-center text-[11px] text-text-muted">
-            {"一", "二", "三", "四", "五", "六", "日".map((d) => (
+            {WEEKDAY_HEADERS.map((d) => (
               <span key={d}>{d}</span>
             ))}
           </div>
