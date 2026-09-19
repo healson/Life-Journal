@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from .database import Base, SessionLocal, engine
 from .models import User
@@ -7,6 +8,22 @@ from .routers import auth, backup, entries, todos
 
 # 建表
 Base.metadata.create_all(bind=engine)
+
+
+def _ensure_columns():
+    """轻量迁移：create_all 只会新建缺失的表，不会给已存在的旧表补列。
+    升级到多用户版本后，旧库的 users 表缺少 is_admin 列，启动前需补上，
+    否则 _bootstrap_admin / 注册登录查询 is_admin 会抛 no such column，导致容器崩溃(502)。"""
+    if engine.dialect.name != "sqlite":
+        return
+    with engine.connect() as conn:
+        cols = {row["name"] for row in conn.execute(text("PRAGMA table_info(users)")).mappings()}
+        if cols and "is_admin" not in cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT 0"))
+            conn.commit()
+
+
+_ensure_columns()
 
 
 def _bootstrap_admin():
