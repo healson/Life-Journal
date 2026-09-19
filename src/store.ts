@@ -100,7 +100,8 @@ function todoPayload(t: Partial<Todo>) {
 
 function plainText(md: string): string {
   return md
-    .replace(/[#*`>\-_!()\[\]]/g, "")
+    .replace(/<[^>]*>/g, "")             // 先剥掉内联 HTML 标签（如 <span style="...">）
+    .replace(/[#*`>\-_!()\[\]]/g, "")    // 再清掉常见 Markdown 语法符号
     .replace(/\n+/g, " ")
     .trim()
     .slice(0, 200)
