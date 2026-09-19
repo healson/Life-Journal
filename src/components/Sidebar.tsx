@@ -57,7 +57,9 @@ export function Sidebar({ onViewChange }: Props) {
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-sm font-bold text-text truncate">人生记趣录</div>
-          <div className="text-[10px] text-text-muted">Life Journal</div>
+          <div className="text-[10px] text-text-muted truncate">
+            {state.currentUser?.username ? `${state.currentUser.username}` : "Life Journal"}
+          </div>
         </div>
         <button
           onClick={() => setSettingsOpen(true)}
@@ -69,7 +71,7 @@ export function Sidebar({ onViewChange }: Props) {
         <button
           onClick={() => store.lock()}
           className="p-1.5 rounded-md text-text-muted hover:text-danger hover:bg-danger/10 transition-colors"
-          title="锁定"
+          title="退出登录"
         >
           <LogOut className="w-3.5 h-3.5" />
         </button>

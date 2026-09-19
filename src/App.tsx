@@ -4,7 +4,7 @@ import { EntryList } from "./components/EntryList"
 import { MarkdownEditor } from "./components/MarkdownEditor"
 import { TodoList } from "./components/TodoList"
 import { ConvertDrawer } from "./components/ConvertDrawer"
-import { PinLock } from "./components/PinLock"
+import { LoginScreen } from "./components/LoginScreen"
 import { ResizablePane } from "./components/ResizablePane"
 import { EnvelopeLayer } from "./components/EnvelopeLayer"
 import { ConfirmHost } from "./components/ConfirmDialog"
@@ -18,11 +18,11 @@ export default function App() {
   const [view, setView] = useState<View>("entries")
   const state = useStore()
 
-  // 未解锁时显示密码锁
+  // 未登录时显示登录页
   if (!state.isUnlocked) {
     return (
       <>
-        <PinLock onSuccess={() => store.state.isUnlocked} />
+        <LoginScreen />
         <ConfirmHost />
       </>
     )
