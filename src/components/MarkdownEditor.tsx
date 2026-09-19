@@ -176,8 +176,8 @@ function EntryMetaBar({ entry, onSave }: {
         className="w-full text-3xl font-bold bg-transparent outline-none text-text placeholder:text-text-muted/50"
       />
 
-      {/* 日期 + 心情 + 标签 + 置顶 */}
-      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+      {/* 日期 + 心情 + 标签 + 置顶 —— 固定单行，不换行；标签区空间不足时内部横向滚动 */}
+      <div className="mt-3 flex items-center gap-x-5 whitespace-nowrap">
         {/* 自定义日期 —— 月份改到下个月时触发信封 */}
         <DateInputWithEnvelope currentDate={currentDate} onPick={(ds) => onSave({ date: ds })} />
 
@@ -200,18 +200,20 @@ function EntryMetaBar({ entry, onSave }: {
           ))}
         </div>
 
-        {/* 标签 */}
-        <div className="flex-1 min-w-[200px]">
-          <TagInput
-            tags={entry.tags}
-            onChange={(tags) => onSave({ tags })}
-          />
+        {/* 标签（收缩 + 内部横向滚动） */}
+        <div className="flex-1 min-w-0">
+          <div className="overflow-x-auto no-scrollbar">
+            <TagInput
+              tags={entry.tags}
+              onChange={(tags) => onSave({ tags })}
+            />
+          </div>
         </div>
 
         {/* 置顶 */}
         <button
           onClick={() => store.togglePin(entry.id)}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+          className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
             entry.isPinned ? "bg-accent/20 text-accent" : "bg-surface-hover text-text-secondary hover:text-text"
           }`}
         >
@@ -315,10 +317,15 @@ function DateInputWithEnvelope({ currentDate, onPick }: {
     setView((v) => (v.m === 1 ? { y: v.y - 1, m: 12 } : { ...v, m: v.m - 1 }))
   const nextMonth = () =>
     setView((v) => (v.m === 12 ? { y: v.y + 1, m: 1 } : { ...v, m: v.m + 1 }))
+  // 回到今天：视图切到今天所在年月
+  const goToday = () => {
+    const n = new Date()
+    setView({ y: n.getFullYear(), m: n.getMonth() + 1 })
+  }
 
   const pick = (day: number) => {
     const ds = `${view.y}-${String(view.m).padStart(2, "0")}-${String(day).padStart(2, "0")}`
-    // 只有"点选了更晚的日期"这一个入口会触发信封
+    // 只有“点选了更晚的日期”这一个入口会触发信封
     if (ds > currentDate) {
       const fromEl = btnRef.current
       const toEl = document.querySelector<HTMLElement>("[data-envelope-target]")
@@ -368,6 +375,13 @@ function DateInputWithEnvelope({ currentDate, onPick }: {
             <span className="text-sm font-medium text-text">
               {view.y} 年 {view.m} 月
             </span>
+            <button
+              type="button"
+              onClick={goToday}
+              className="ml-1 px-1.5 py-0.5 rounded text-[11px] text-text-muted hover:text-primary hover:bg-primary/10 transition-colors"
+            >
+              今天
+            </button>
             <button
               type="button"
               onClick={nextMonth}
