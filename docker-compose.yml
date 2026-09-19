@@ -1,7 +1,7 @@
 services:
   api:
     build: ./backend
-    container_name: rjq-api
+    container_name: life-journal-api
     env_file: .env
     environment:
       - DATABASE_URL=sqlite:////data/app.db
@@ -13,7 +13,7 @@ services:
 
   web:
     build: ./diary-app
-    container_name: rjq-web
+    container_name: life-journal-web
     depends_on:
       - api
     restart: unless-stopped
