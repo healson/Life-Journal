@@ -11,13 +11,16 @@ import TaskItem from "@tiptap/extension-task-item"
 import CharacterCount from "@tiptap/extension-character-count"
 import Link from "@tiptap/extension-link"
 import HorizontalRule from "@tiptap/extension-horizontal-rule"
+import Image from "@tiptap/extension-image"
 import { Markdown } from "tiptap-markdown"
 import { useEffect, useCallback, useRef, useState } from "react"
-import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, FileDown, FileText, FileType } from "lucide-react"
 import { ToolBar } from "./ToolBar"
 import { store, DRAFT_ID } from "../store"
 import { useStore } from "../lib/observer"
 import { launchEnvelope } from "../lib/envelope"
+import { FontSize } from "../lib/fontSize"
+import { exportMarkdown, exportPdf, exportWord } from "../lib/export"
 import { cn } from "../lib/utils"
 
 interface Props {
@@ -32,7 +35,7 @@ export function MarkdownEditor({ entryId }: Props) {
   const isDraft = entryId === DRAFT_ID
   const entry = isDraft ? state.draft : state.entries.find((e) => e.id === entryId)
 
-  // 草稿态走 updateDraft，否则走 updateEntry（都即时保存，草稿失焦才提交为正式日记）
+  // 草稿态走 updateDraft，否则走 updateEntry（两者都即时保存，草稿失焦才提交为正式日记）
   const save = useCallback(
     (patch: Parameters<typeof store.updateEntry>[1]) => {
       if (isDraft) store.updateDraft(patch)
@@ -43,22 +46,37 @@ export function MarkdownEditor({ entryId }: Props) {
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ codeBlock: {}, blockquote: {}, horizontalRule: false }),
+      StarterKit.configure({
+        codeBlock: {},
+        blockquote: {},
+        horizontalRule: false,
+      }),
       HorizontalRule,
       Underline,
       TextStyle,
       Color,
+      FontSize,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Highlight.configure({ multicolor: true }),
-      Placeholder.configure({ placeholder: "写点什么吧… 支持 Markdown 快捷语法，输入 # 开始标题，* 开始列表" }),
+      Placeholder.configure({
+        placeholder: "写点什么吧… 支持 Markdown 快捷语法，输入 # 开始标题，* 开始列表",
+      }),
       TaskList,
       TaskItem.configure({ nested: true }),
       CharacterCount,
-      Link.configure({ openOnClick: false, autolink: true }),
+      Link.configure({
+        openOnClick: false,
+        autolink: true,
+      }),
+      Image.configure({ inline: false, allowBase64: true }),
       Markdown,
     ],
     content: entry?.content ?? "",
-    editorProps: { attributes: { class: "tiptap-editor" } },
+    editorProps: {
+      attributes: {
+        class: "tiptap-editor",
+      },
+    },
     onUpdate: ({ editor }) => {
       const md = editor.storage.markdown?.getMarkdown?.() ?? editor.getHTML()
       save({ content: md })
@@ -77,7 +95,9 @@ export function MarkdownEditor({ entryId }: Props) {
   // 快捷键：Cmd/Ctrl+S 保存（实际上自动保存）
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "s") e.preventDefault()
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+        e.preventDefault()
+      }
     }
     window.addEventListener("keydown", handler)
     return () => window.removeEventListener("keydown", handler)
@@ -88,7 +108,10 @@ export function MarkdownEditor({ entryId }: Props) {
     const previousUrl = editor.getAttributes("link").href
     const url = window.prompt("链接地址", previousUrl ?? "")
     if (url === null) return
-    if (url === "") { editor.chain().focus().extendMarkRange("link").unsetLink().run(); return }
+    if (url === "") {
+      editor.chain().focus().extendMarkRange("link").unsetLink().run()
+      return
+    }
     const validatedUrl = /^https?:\/\//i.test(url) ? url : `https://${url}`
     editor.chain().focus().extendMarkRange("link").setLink({ href: validatedUrl }).run()
   }, [editor])
@@ -96,7 +119,7 @@ export function MarkdownEditor({ entryId }: Props) {
   if (!editor) return null
   if (!entry) return null
 
-  // 草稿态：焦点离开编辑器时提交为正式日记
+  // 草稿态：焦点离开编辑器（点击任意非编辑区域）时提交为正式日记
   const handleBlur = useCallback(
     (e: React.FocusEvent) => {
       if (!isDraft) return
@@ -115,44 +138,92 @@ export function MarkdownEditor({ entryId }: Props) {
         <div className="max-w-3xl mx-auto">
           {/* 标题 + 心情 + 标签 + 自定义日期 */}
           <EntryMetaBar entry={entry} onSave={save} />
+
           {/* 工具栏（紧跟 meta，贴近打字区） */}
-          <div className="relative"><ToolBar editor={editor} onSetLink={setLink} /></div>
+          <div className="relative">
+            <ToolBar editor={editor} onSetLink={setLink} />
+          </div>
+
           <EditorContent editor={editor} />
         </div>
       </div>
+
       {/* 底部状态栏 */}
       <EditorStatusBar editor={editor} entry={entry} />
     </div>
   )
 }
 
-function EntryMetaBar({ entry, onSave }: { entry: NonNullable<ReturnType<typeof useStore>["entries"]>[number] | Exclude<ReturnType<typeof useStore>["draft"], null>; onSave: (patch: Parameters<typeof store.updateEntry>[1]) => void }) {
+function EntryMetaBar({ entry, onSave }: {
+  entry: NonNullable<ReturnType<typeof useStore>["entries"]>[number] | Exclude<ReturnType<typeof useStore>["draft"], null>
+  onSave: (patch: Parameters<typeof store.updateEntry>[1]) => void
+}) {
   const moods = [
-    { key: "happy", emoji: "😊" }, { key: "calm", emoji: "😌" },
-    { key: "energetic", emoji: "🔥" }, { key: "tired", emoji: "😴" },
-    { key: "sad", emoji: "😔" }, { key: "angry", emoji: "😤" },
+    { key: "happy", emoji: "😊" },
+    { key: "calm", emoji: "😌" },
+    { key: "energetic", emoji: "🔥" },
+    { key: "tired", emoji: "😴" },
+    { key: "sad", emoji: "😔" },
+    { key: "angry", emoji: "😤" },
   ] as const
+
   // 自定义日期：优先用 entry.date，否则 fallback 到 createdAt
   const currentDate = entry.date ?? entry.createdAt.slice(0, 10)
+
   return (
     <div className="px-8 pt-6 pb-4 border-b border-border-light">
       {/* 标题 */}
-      <input type="text" value={entry.title} onChange={(e) => onSave({ title: e.target.value })} placeholder="标题…" className="w-full text-3xl font-bold bg-transparent outline-none text-text placeholder:text-text-muted/50" />
+      <input
+        type="text"
+        value={entry.title}
+        onChange={(e) => onSave({ title: e.target.value })}
+        placeholder="标题…"
+        className="w-full text-3xl font-bold bg-transparent outline-none text-text placeholder:text-text-muted/50"
+      />
+
       {/* 日期 + 心情 + 标签 + 置顶 —— 固定单行，不换行；标签区空间不足时内部横向滚动 */}
       <div className="mt-3 flex items-center gap-x-5 whitespace-nowrap">
         {/* 自定义日期 —— 月份改到下个月时触发信封 */}
         <DateInputWithEnvelope currentDate={currentDate} onPick={(ds) => onSave({ date: ds })} />
+
         {/* 心情 */}
         <div className="flex items-center gap-1">
           <span className="text-xs text-text-muted mr-1">心情</span>
           {moods.map((m) => (
-            <button key={m.key} onClick={() => onSave({ mood: entry.mood === m.key ? undefined : m.key })} className={`w-8 h-8 rounded-lg text-lg flex items-center justify-center transition-all ${entry.mood === m.key ? "bg-surface-active ring-2 ring-primary/30 scale-110" : "hover:bg-surface-hover"}`} title={m.key}>{m.emoji}</button>
+            <button
+              key={m.key}
+              onClick={() => onSave({ mood: entry.mood === m.key ? undefined : m.key })}
+              className={`w-8 h-8 rounded-lg text-lg flex items-center justify-center transition-all ${
+                entry.mood === m.key
+                  ? "bg-surface-active ring-2 ring-primary/30 scale-110"
+                  : "hover:bg-surface-hover"
+              }`}
+              title={m.key}
+            >
+              {m.emoji}
+            </button>
           ))}
         </div>
+
         {/* 标签（收缩 + 内部横向滚动） */}
-        <div className="flex-1 min-w-0"><div className="overflow-x-auto no-scrollbar"><TagInput tags={entry.tags} onChange={(tags) => onSave({ tags })} /></div></div>
+        <div className="flex-1 min-w-0">
+          <div className="overflow-x-auto no-scrollbar">
+            <TagInput
+              tags={entry.tags}
+              onChange={(tags) => onSave({ tags })}
+            />
+          </div>
+        </div>
+
         {/* 置顶 */}
-        <button onClick={() => store.togglePin(entry.id)} className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${entry.isPinned ? "bg-accent/20 text-accent" : "bg-surface-hover text-text-secondary hover:text-text"}`}>{entry.isPinned ? "📌 已置顶" : "📌 置顶"}</button>
+        <button
+          onClick={() => store.togglePin(entry.id)}
+          className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+            entry.isPinned ? "bg-accent/20 text-accent" : "bg-surface-hover text-text-secondary hover:text-text"
+          }`}
+        >
+          {entry.isPinned ? "📌 已置顶" : "📌 置顶"}
+        </button>
       </div>
     </div>
   )
@@ -163,27 +234,81 @@ function TagInput({ tags, onChange }: { tags: string[]; onChange: (t: string[]) 
     if (e.key === "Enter" || e.key === ",") {
       e.preventDefault()
       const v = e.currentTarget.value.trim().replace(/^#/, "")
-      if (v && !tags.includes(v)) { onChange([...tags, v]); e.currentTarget.value = "" }
-    } else if (e.key === "Backspace" && !e.currentTarget.value && tags.length) { onChange(tags.slice(0, -1)) }
+      if (v && !tags.includes(v)) {
+        onChange([...tags, v])
+        e.currentTarget.value = ""
+      }
+    } else if (e.key === "Backspace" && !e.currentTarget.value && tags.length) {
+      onChange(tags.slice(0, -1))
+    }
   }
+
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {tags.map((t) => (
-        <span key={t} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium">#{t}
-          <button onClick={() => onChange(tags.filter((x) => x !== t))} className="hover:text-primary-dark">×</button>
+        <span
+          key={t}
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium"
+        >
+          #{t}
+          <button
+            onClick={() => onChange(tags.filter((x) => x !== t))}
+            className="hover:text-primary-dark"
+          >
+            ×
+          </button>
         </span>
       ))}
-      <input type="text" placeholder={tags.length ? "" : "输入标签，回车添加…"} className="bg-transparent outline-none text-sm text-text-secondary placeholder:text-text-muted min-w-[120px]" onKeyDown={handleKeyDown} />
+      <input
+        type="text"
+        placeholder={tags.length ? "" : "输入标签，回车添加…"}
+        className="bg-transparent outline-none text-sm text-text-secondary placeholder:text-text-muted min-w-[120px]"
+        onKeyDown={handleKeyDown}
+      />
     </div>
   )
 }
 
-function EditorStatusBar({ editor, entry }: { editor: Editor; entry: { updatedAt: string; id: string } }) {
+function EditorStatusBar({ editor, entry }: {
+  editor: Editor
+  entry: NonNullable<ReturnType<typeof useStore>["entries"]>[number] | Exclude<ReturnType<typeof useStore>["draft"], null>
+}) {
   const charCount = editor.storage.characterCount?.characters?.() ?? 0
   const wordCount = editor.storage.characterCount?.words?.() ?? 0
+  const markdown = editor.storage.markdown?.getMarkdown?.() ?? editor.getHTML()
+  const title = entry.title || "无标题"
+  const date = entry.date ?? entry.createdAt.slice(0, 10)
+  const html = editor.getHTML()
   return (
     <div className="flex items-center justify-between px-6 py-2 border-t border-border-light text-xs text-text-muted bg-surface/50">
       <span>上次编辑 {new Date(entry.updatedAt).toLocaleString("zh-CN")}</span>
+
+      {/* 导出：md / doc / pdf */}
+      <div className="flex items-center gap-0.5">
+        <span className="mr-1">导出</span>
+        <button
+          onClick={() => exportMarkdown(title, markdown)}
+          title="导出 Markdown (.md)"
+          className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-surface-hover hover:text-text transition-colors"
+        >
+          <FileType className="w-3.5 h-3.5" /> MD
+        </button>
+        <button
+          onClick={() => exportWord(title, html, date)}
+          title="导出 Word 文档 (.doc)"
+          className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-surface-hover hover:text-text transition-colors"
+        >
+          <FileText className="w-3.5 h-3.5" /> DOC
+        </button>
+        <button
+          onClick={() => exportPdf(title, html, date)}
+          title="导出 PDF（打印另存）"
+          className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-surface-hover hover:text-text transition-colors"
+        >
+          <FileDown className="w-3.5 h-3.5" /> PDF
+        </button>
+      </div>
+
       <span>{charCount} 字符 · {wordCount} 词</span>
     </div>
   )
@@ -195,9 +320,15 @@ function EditorStatusBar({ editor, entry }: { editor: Editor; entry: { updatedAt
  * 现在：点日期按钮 → 弹出日历 → 点某一天 → 若晚于原日期立即触发信封。
  * hover 永远不会触发任何东西。
  */
-function DateInputWithEnvelope({ currentDate, onPick }: { currentDate: string; onPick: (ds: string) => void }) {
+function DateInputWithEnvelope({ currentDate, onPick }: {
+  currentDate: string
+  onPick: (ds: string) => void
+}) {
   const [open, setOpen] = useState(false)
-  const [view, setView] = useState(() => { const [y, m] = currentDate.split("-").map(Number); return { y: y || new Date().getFullYear(), m: m || 1 } })
+  const [view, setView] = useState(() => {
+    const [y, m] = currentDate.split("-").map(Number)
+    return { y: y || new Date().getFullYear(), m: m || 1 }
+  })
   const [pos, setPos] = useState({ top: 0, left: 0 })
   const wrapRef = useRef<HTMLDivElement>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
@@ -214,15 +345,22 @@ function DateInputWithEnvelope({ currentDate, onPick }: { currentDate: string; o
   // 点击弹层外部关闭
   useEffect(() => {
     if (!open) return
-    const onDown = (e: MouseEvent) => { if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false) }
+    const onDown = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
+    }
     document.addEventListener("mousedown", onDown)
     return () => document.removeEventListener("mousedown", onDown)
   }, [open])
 
-  const prevMonth = () => setView((v) => (v.m === 1 ? { y: v.y - 1, m: 12 } : { ...v, m: v.m - 1 }))
-  const nextMonth = () => setView((v) => (v.m === 12 ? { y: v.y + 1, m: 1 } : { ...v, m: v.m + 1 }))
+  const prevMonth = () =>
+    setView((v) => (v.m === 1 ? { y: v.y - 1, m: 12 } : { ...v, m: v.m - 1 }))
+  const nextMonth = () =>
+    setView((v) => (v.m === 12 ? { y: v.y + 1, m: 1 } : { ...v, m: v.m + 1 }))
   // 回到今天：视图切到今天所在年月
-  const goToday = () => { const n = new Date(); setView({ y: n.getFullYear(), m: n.getMonth() + 1 }) }
+  const goToday = () => {
+    const n = new Date()
+    setView({ y: n.getFullYear(), m: n.getMonth() + 1 })
+  }
 
   const pick = (day: number) => {
     const ds = `${view.y}-${String(view.m).padStart(2, "0")}-${String(day).padStart(2, "0")}`
@@ -230,7 +368,9 @@ function DateInputWithEnvelope({ currentDate, onPick }: { currentDate: string; o
     if (ds > currentDate) {
       const fromEl = btnRef.current
       const toEl = document.querySelector<HTMLElement>("[data-envelope-target]")
-      if (fromEl && toEl) launchEnvelope({ fromEl, toEl, label: "发往未来" })
+      if (fromEl && toEl) {
+        launchEnvelope({ fromEl, toEl, label: "发往未来" })
+      }
     }
     onPick(ds)
     setOpen(false)
@@ -246,30 +386,83 @@ function DateInputWithEnvelope({ currentDate, onPick }: { currentDate: string; o
   return (
     <div className="flex items-center gap-1.5 relative" ref={wrapRef}>
       <span className="text-xs text-text-muted">日期</span>
-      <button ref={btnRef} type="button" onClick={() => setOpen((o) => !o)} data-envelope-source className="flex items-center gap-1 px-2 py-1 rounded-md bg-surface-hover text-sm text-text-secondary hover:text-text transition-colors">
-        <CalendarDays className="w-3.5 h-3.5" />{currentDate}
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        data-envelope-source
+        className="flex items-center gap-1 px-2 py-1 rounded-md bg-surface-hover text-sm text-text-secondary hover:text-text transition-colors"
+      >
+        <CalendarDays className="w-3.5 h-3.5" />
+        {currentDate}
       </button>
+
       {open && (
-        <div className="fixed z-[1200] w-64 p-3 rounded-xl bg-white border border-border-light shadow-xl" style={{ top: pos.top, left: pos.left }}>
+        <div
+          className="fixed z-[1200] w-64 p-3 rounded-xl bg-white border border-border-light shadow-xl"
+          style={{ top: pos.top, left: pos.left }}
+        >
           {/* 月份导航 */}
           <div className="flex items-center justify-between mb-2">
-            <button type="button" onClick={prevMonth} className="p-1 rounded-md hover:bg-surface-hover text-text-secondary"><ChevronLeft className="w-4 h-4" /></button>
-            <span className="text-sm font-medium text-text">{view.y} 年 {view.m} 月</span>
-            <button type="button" onClick={goToday} className="ml-1 px-1.5 py-0.5 rounded text-[11px] text-text-muted hover:text-primary hover:bg-primary/10 transition-colors">今天</button>
-            <button type="button" onClick={nextMonth} className="p-1 rounded-md hover:bg-surface-hover text-text-secondary"><ChevronRight className="w-4 h-4" /></button>
+            <button
+              type="button"
+              onClick={prevMonth}
+              className="p-1 rounded-md hover:bg-surface-hover text-text-secondary"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="text-sm font-medium text-text">
+              {view.y} 年 {view.m} 月
+            </span>
+            <button
+              type="button"
+              onClick={goToday}
+              className="ml-1 px-1.5 py-0.5 rounded text-[11px] text-text-muted hover:text-primary hover:bg-primary/10 transition-colors"
+            >
+              今天
+            </button>
+            <button
+              type="button"
+              onClick={nextMonth}
+              className="p-1 rounded-md hover:bg-surface-hover text-text-secondary"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
+
           {/* 星期表头 */}
-          <div className="grid grid-cols-7 mb-1 text-center text-[11px] text-text-muted">{WEEKDAY_HEADERS.map((d) => (<span key={d}>{d}</span>))}</div>
+          <div className="grid grid-cols-7 mb-1 text-center text-[11px] text-text-muted">
+            {WEEKDAY_HEADERS.map((d) => (
+              <span key={d}>{d}</span>
+            ))}
+          </div>
+
           {/* 日期网格 */}
           <div className="grid grid-cols-7 gap-y-0.5">
-            {Array.from({ length: offset }).map((_, i) => (<span key={`blank-${i}`} />))}
+            {Array.from({ length: offset }).map((_, i) => (
+              <span key={`blank-${i}`} />
+            ))}
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const day = i + 1
               const ds = `${view.y}-${String(view.m).padStart(2, "0")}-${String(day).padStart(2, "0")}`
               const isToday = ds === todayStr
               const isSel = ds === currentDate
               return (
-                <button key={ds} type="button" onClick={() => pick(day)} className={cn("mx-auto w-7 h-7 flex items-center justify-center rounded-md text-xs transition-colors", isSel ? "bg-primary text-white font-medium" : isToday ? "text-accent font-bold ring-1 ring-accent/40" : "text-text-secondary hover:bg-surface-hover")}>{day}</button>
+                <button
+                  key={ds}
+                  type="button"
+                  onClick={() => pick(day)}
+                  className={cn(
+                    "mx-auto w-7 h-7 flex items-center justify-center rounded-md text-xs transition-colors",
+                    isSel
+                      ? "bg-primary text-white font-medium"
+                      : isToday
+                        ? "text-accent font-bold ring-1 ring-accent/40"
+                        : "text-text-secondary hover:bg-surface-hover",
+                  )}
+                >
+                  {day}
+                </button>
               )
             })}
           </div>

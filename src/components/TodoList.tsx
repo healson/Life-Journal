@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react"
-import { Check, Circle, Calendar, Bell, Flag, Link2, Plus, Trash2 } from "lucide-react"
+import { Check, Circle, Calendar, Bell, Flag, Link2, Plus, Trash2, Pencil } from "lucide-react"
 import { store } from "../store"
 import { useStore } from "../lib/observer"
 import { confirmDialog } from "./ConfirmDialog"
@@ -13,6 +13,7 @@ export function TodoList() {
   const state = useStore()
   const [filter, setFilter] = useState<Filter>("all")
   const [showAdd, setShowAdd] = useState(false)
+  const [editing, setEditing] = useState<Todo | null>(null)
 
   const filtered = useMemo(() => {
     let list = [...state.todos]
@@ -96,19 +97,22 @@ export function TodoList() {
             </div>
           )}
           {filtered.map((todo) => (
-            <TodoItem key={todo.id} todo={todo} />
+            <TodoItem key={todo.id} todo={todo} onEdit={setEditing} />
           ))}
         </div>
       </div>
 
       {showAdd && (
-        <AddTodoDialog onClose={() => setShowAdd(false)} />
+        <TodoDialog onClose={() => setShowAdd(false)} />
+      )}
+      {editing && (
+        <TodoDialog initial={editing} onClose={() => setEditing(null)} />
       )}
     </div>
   )
 }
 
-function TodoItem({ todo }: { todo: Todo }) {
+function TodoItem({ todo, onEdit }: { todo: Todo; onEdit: (t: Todo) => void }) {
   const priority = PRIORITY_LABELS[todo.priority]
   const entry = todo.entryId ? store.state.entries.find((e) => e.id === todo.entryId) : null
   const isOverdue = todo.dueDate && new Date(todo.dueDate) < new Date() && todo.status !== "done"
@@ -199,39 +203,54 @@ function TodoItem({ todo }: { todo: Todo }) {
       </div>
 
       {/* 操作 */}
-      <button
-        onClick={async () => {
-          const ok = await confirmDialog({
-            title: "确定删除这条待办吗？",
-            message: "删除后无法恢复。",
-            confirmText: "删除",
-            tone: "danger",
-          })
-          if (ok) store.deleteTodo(todo.id)
-        }}
-        className="opacity-0 group-hover:opacity-100 p-1 text-text-muted hover:text-danger transition-all"
-      >
-        <Trash2 className="w-4 h-4" />
-      </button>
+      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+        <button
+          onClick={() => onEdit(todo)}
+          title="编辑待办"
+          className="p-1 text-text-muted hover:text-primary transition-colors"
+        >
+          <Pencil className="w-4 h-4" />
+        </button>
+        <button
+          onClick={async () => {
+            const ok = await confirmDialog({
+              title: "确定删除这条待办吗？",
+              message: "删除后无法恢复。",
+              confirmText: "删除",
+              tone: "danger",
+            })
+            if (ok) store.deleteTodo(todo.id)
+          }}
+          className="p-1 text-text-muted hover:text-danger transition-colors"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   )
 }
 
-function AddTodoDialog({ onClose }: { onClose: () => void }) {
-  const [title, setTitle] = useState("")
-  const [priority, setPriority] = useState<1 | 2 | 3>(2)
-  const [dueDate, setDueDate] = useState("")
-  const [remindAt, setRemindAt] = useState("")
+function TodoDialog({ initial, onClose }: { initial?: Todo | null; onClose: () => void }) {
+  const [title, setTitle] = useState(initial?.title ?? "")
+  const [description, setDescription] = useState(initial?.description ?? "")
+  const [priority, setPriority] = useState<1 | 2 | 3>(initial?.priority ?? 2)
+  const [dueDate, setDueDate] = useState(initial?.dueDate ?? "")
+  const [remindAt, setRemindAt] = useState(initial?.remindAt ?? "")
 
   const submit = () => {
     if (!title.trim()) return
-    store.addTodos([{
+    const patch = {
       title: title.trim(),
+      description: description.trim() || undefined,
       priority,
-      status: "pending",
       dueDate: dueDate || undefined,
       remindAt: remindAt || undefined,
-    }])
+    }
+    if (initial) {
+      store.updateTodo(initial.id, patch)
+    } else {
+      store.addTodos([{ ...patch, status: "pending" }])
+    }
     onClose()
   }
 
@@ -239,7 +258,7 @@ function AddTodoDialog({ onClose }: { onClose: () => void }) {
     <>
       <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
       <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] bg-surface rounded-xl shadow-popover z-50 animate-fade-in-up p-6 space-y-4">
-        <h3 className="text-lg font-semibold">新建待办</h3>
+        <h3 className="text-lg font-semibold">{initial ? "编辑待办" : "新建待办"}</h3>
 
         <input
           type="text"
@@ -249,6 +268,14 @@ function AddTodoDialog({ onClose }: { onClose: () => void }) {
           className="w-full px-3 py-2 rounded-lg border border-border outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
           autoFocus
           onKeyDown={(e) => e.key === "Enter" && submit()}
+        />
+
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="备注（可选）…"
+          rows={2}
+          className="w-full px-3 py-2 rounded-lg border border-border outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10 resize-none"
         />
 
         <div className="flex items-center gap-2 text-sm">
@@ -294,7 +321,7 @@ function AddTodoDialog({ onClose }: { onClose: () => void }) {
             disabled={!title.trim()}
             className="px-4 py-2 bg-primary text-white text-sm rounded-lg hover:bg-primary-light disabled:opacity-50"
           >
-            创建
+            {initial ? "保存" : "创建"}
           </button>
         </div>
       </div>

@@ -25,9 +25,13 @@ import {
   Wand2,
   GripVertical,
   SmilePlus,
+  Type,
+  ImagePlus,
 } from "lucide-react"
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { cn } from "../lib/utils"
+import { FONT_SIZES, currentFontSize } from "../lib/fontSize"
+import { apiUploadImage } from "../api/client"
 
 interface Props {
   editor: Editor
@@ -71,6 +75,29 @@ const EMOJI_GROUPS: { label: string; items: string[] }[] = [
 export function ToolBar({ editor, onSetLink }: Props) {
   const [showColorPicker, setShowColorPicker] = useState(false)
   const [showHighlightPicker, setShowHighlightPicker] = useState(false)
+  const [showFontSize, setShowFontSize] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const closeAll = () => {
+    setShowColorPicker(false)
+    setShowHighlightPicker(false)
+    setShowFontSize(false)
+  }
+
+  const handleInsertImage = async (file: File | undefined) => {
+    if (!file) return
+    setUploading(true)
+    try {
+      const url = await apiUploadImage(file)
+      editor.chain().focus().setImage({ src: url }).run()
+    } catch (err) {
+      window.alert((err as Error)?.message || "图片上传失败")
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }
 
   const Btn = ({
     active,
@@ -232,12 +259,66 @@ export function ToolBar({ editor, onSetLink }: Props) {
         )}
       </div>
 
+      {/* 字号 */}
+      <div className="relative">
+        <button
+          type="button"
+          title="字体大小"
+          onClick={() => {
+            setShowFontSize((v) => !v)
+            setShowColorPicker(false)
+            setShowHighlightPicker(false)
+          }}
+          className={cn(
+            "w-8 h-8 flex items-center justify-center rounded-md text-text-secondary hover:text-text hover:bg-surface-hover transition-colors",
+            showFontSize && "bg-primary/15 text-primary",
+          )}
+        >
+          <Type className="w-4 h-4" />
+        </button>
+        {showFontSize && (
+          <FontSizeControl
+            current={currentFontSize(editor)}
+            onPick={(size) => {
+              editor.chain().focus().setMark("textStyle", { fontSize: size }).run()
+              setShowFontSize(false)
+            }}
+            onClear={() => {
+              editor.chain().focus().setMark("textStyle", { fontSize: "" }).run()
+              setShowFontSize(false)
+            }}
+          />
+        )}
+      </div>
+
+      {/* 插入图片 */}
+      <div className="relative">
+        <button
+          type="button"
+          title="插入图片"
+          onClick={() => fileInputRef.current?.click()}
+          className={cn(
+            "w-8 h-8 flex items-center justify-center rounded-md text-text-secondary hover:text-text hover:bg-surface-hover transition-colors",
+            uploading && "opacity-60",
+          )}
+        >
+          <ImagePlus className="w-4 h-4" />
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/gif,image/webp"
+          className="hidden"
+          onChange={(e) => handleInsertImage(e.target.files?.[0])}
+        />
+      </div>
+
       <Divider />
 
       {/* 表情 */}
       <EmojiControl
         editor={editor}
-        onOpen={() => { setShowColorPicker(false); setShowHighlightPicker(false) }}
+        onOpen={closeAll}
       />
 
       <Divider />
@@ -373,6 +454,46 @@ function ColorPalette({
         className="mt-2 w-full text-xs text-text-muted hover:text-text py-1.5 border-t border-border-light"
       >
         清除颜色
+      </button>
+    </div>
+  )
+}
+
+function FontSizeControl({
+  current,
+  onPick,
+  onClear,
+}: {
+  current: number | null
+  onPick: (size: string) => void
+  onClear: () => void
+}) {
+  return (
+    <div className="absolute left-0 top-full mt-2 w-[150px] p-2.5 rounded-xl bg-surface border border-border shadow-popover z-50 animate-fade-in-up">
+      <div className="text-[10px] font-medium text-text-muted px-1 mb-1.5">字号（px）</div>
+      <div className="grid grid-cols-4 gap-1.5">
+        {FONT_SIZES.map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => onPick(`${s}px`)}
+            style={{ fontSize: Math.min(s, 20) }}
+            className={cn(
+              "h-8 flex items-center justify-center rounded-lg text-text-secondary hover:bg-primary/10 hover:text-primary transition-colors",
+              current === s && "bg-primary/15 text-primary font-semibold",
+            )}
+            title={`${s}px`}
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={onClear}
+        className="mt-1.5 w-full text-xs text-text-muted hover:text-text py-1.5 border-t border-border-light"
+      >
+        默认大小
       </button>
     </div>
   )

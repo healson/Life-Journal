@@ -98,16 +98,13 @@ export function Sidebar({ onViewChange }: Props) {
               </div>
             </button>
 
-            {/* 日均 → 穿透到日记 */}
-            <button
-              onClick={() => { store.selectDate(null); onViewChange("entries") }}
-              className="text-left p-2.5 rounded-lg bg-primary/5 border border-primary/10 hover:bg-primary/10 hover:border-primary/20 transition-colors cursor-pointer"
-            >
+            {/* 日均 → 纯展示，不穿透 */}
+            <div className="text-left p-2.5 rounded-lg bg-primary/5 border border-primary/10">
               <div className="text-[10px] text-text-muted">日均</div>
               <div className="text-sm font-bold text-primary leading-tight">
                 {dailyAvg}<span className="text-xs font-normal ml-0.5">篇</span>
               </div>
-            </button>
+            </div>
 
             {/* 待办总计 → 穿透到待办 */}
             <button
