@@ -2,6 +2,7 @@ import { useState, useMemo } from "react"
 import { Check, Circle, Calendar, Bell, Flag, Link2, Plus, Trash2 } from "lucide-react"
 import { store } from "../store"
 import { useStore } from "../lib/observer"
+import { confirmDialog } from "./ConfirmDialog"
 import { cn } from "../lib/utils"
 import { PRIORITY_LABELS } from "../types"
 import type { Todo } from "../types"
@@ -199,8 +200,14 @@ function TodoItem({ todo }: { todo: Todo }) {
 
       {/* 操作 */}
       <button
-        onClick={() => {
-          if (confirm("确定删除？")) store.deleteTodo(todo.id)
+        onClick={async () => {
+          const ok = await confirmDialog({
+            title: "确定删除这条待办吗？",
+            message: "删除后无法恢复。",
+            confirmText: "删除",
+            tone: "danger",
+          })
+          if (ok) store.deleteTodo(todo.id)
         }}
         className="opacity-0 group-hover:opacity-100 p-1 text-text-muted hover:text-danger transition-all"
       >

@@ -93,7 +93,11 @@ export function EntryList() {
             type="text"
             placeholder="搜索日记…"
             value={searchLocal}
-            onChange={(e) => setSearchLocal(e.target.value)}
+            onChange={(e) => {
+              const v = e.target.value
+              setSearchLocal(v)
+              store.setSearch(v) // 同步到全局，供卡片高亮关键词
+            }}
             className="w-full pl-9 pr-3 py-2 rounded-lg bg-surface border border-border-light text-sm outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10 transition-all"
           />
         </div>
@@ -198,10 +202,10 @@ export function EntryList() {
         )}
       </div>
 
-      {/* 橘红色浮动新建按钮 */}
+      {/* 浮动新建按钮（跟随主题点缀色） */}
       <button
         onClick={() => store.createEntry({ entryType: "daily" })}
-        className="absolute bottom-5 right-5 w-12 h-12 rounded-full bg-[#E55A3B] hover:bg-[#D24A2E] active:scale-95 text-white shadow-lg shadow-[#E55A3B]/40 flex items-center justify-center transition-all z-20 group"
+        className="absolute bottom-5 right-5 w-12 h-12 rounded-full bg-accent hover:bg-accent-light active:scale-95 text-white shadow-lg shadow-accent/30 flex items-center justify-center transition-all z-20 group"
         title="新建日记"
       >
         <Plus className="w-6 h-6 transition-transform group-hover:rotate-90" />
