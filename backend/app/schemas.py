@@ -23,9 +23,31 @@ class TokenResponse(BaseModel):
 class UserOut(BaseModel):
     id: int
     username: str
+    is_admin: bool = False
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=6, max_length=128)
+
+
+class UserCreateRequest(BaseModel):
+    username: str = Field(min_length=3, max_length=64)
+    password: str = Field(min_length=6, max_length=128)
+    is_admin: bool = False
+
+
+class UserPasswordResetRequest(BaseModel):
+    new_password: str = Field(min_length=6, max_length=128)
+
+
+# ── Backup ──
+class ImportRequest(BaseModel):
+    entries: list[dict] = []
+    todos: list[dict] = []
 
 
 # ── Journal Entry ──
