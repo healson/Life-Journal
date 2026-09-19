@@ -1,7 +1,10 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
+from . import auth as auth_mod
 from .database import Base, SessionLocal, engine
 from .models import User
 from .routers import auth, backup, entries, todos
@@ -40,6 +43,32 @@ def _bootstrap_admin():
 
 
 _bootstrap_admin()
+
+
+def _bootstrap_admin_password():
+    """恢复入口：通过环境变量为某个账号强制设置密码并设为管理员。
+    用于升级后旧账号没有可登录密码的情况（例如旧版 default 账号无后端密码）。
+    设置 BOOTSTRAP_ADMIN_USERNAME=default 与 BOOTSTRAP_ADMIN_PASSWORD=新密码，
+    在 .env 或 docker-compose environment 中启用一次，登录成功后建议移除。
+    若该用户不存在则自动创建。"""
+    username = os.environ.get("BOOTSTRAP_ADMIN_USERNAME")
+    password = os.environ.get("BOOTSTRAP_ADMIN_PASSWORD")
+    if not username or not password:
+        return
+    db = SessionLocal()
+    try:
+        user = auth_mod.get_user_by_username(db, username)
+        if user is None:
+            user = User(username=username, is_admin=True)
+            db.add(user)
+        user.hashed_password = auth_mod.hash_password(password)
+        user.is_admin = True
+        db.commit()
+    finally:
+        db.close()
+
+
+_bootstrap_admin_password()
 
 app = FastAPI(title="人生记趣录 API", version="1.1.0")
 
