@@ -16,7 +16,7 @@ services:
 
   web:
     image: ghcr.io/healson/life-journal:web
-    build: ./diary-app
+    build: .
     pull_policy: always
     container_name: life-journal-web
     depends_on:

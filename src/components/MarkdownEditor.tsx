@@ -11,8 +11,8 @@ import TaskItem from "@tiptap/extension-task-item"
 import CharacterCount from "@tiptap/extension-character-count"
 import Link from "@tiptap/extension-link"
 import HorizontalRule from "@tiptap/extension-horizontal-rule"
-import Image from "@tiptap/extension-image"
 import { Markdown } from "tiptap-markdown"
+import { ResizableImage } from "../lib/resizableImage"
 import { useEffect, useCallback, useRef, useState } from "react"
 import { CalendarDays, ChevronLeft, ChevronRight, FileDown, FileText, FileType } from "lucide-react"
 import { ToolBar } from "./ToolBar"
@@ -68,7 +68,7 @@ export function MarkdownEditor({ entryId }: Props) {
         openOnClick: false,
         autolink: true,
       }),
-      Image.configure({ inline: false, allowBase64: true }),
+      ResizableImage.configure({ inline: false, allowBase64: true }),
       Markdown,
     ],
     content: entry?.content ?? "",
@@ -141,7 +141,12 @@ export function MarkdownEditor({ entryId }: Props) {
 
           {/* 工具栏（紧跟 meta，贴近打字区） */}
           <div className="relative">
-            <ToolBar editor={editor} onSetLink={setLink} />
+            <ToolBar
+              editor={editor}
+              onSetLink={setLink}
+              entryId={entryId}
+              isLocked={!!entry?.isLocked}
+            />
           </div>
 
           <EditorContent editor={editor} />

@@ -22,6 +22,10 @@ env:
   IMAGE: ghcr.io/healson/life-journal
 
 jobs:
+  # ---------- 镜像 tag 计算 helper（避免重复） ----------
+  # 由于 build-api / build-web 各自都需要一套 tag，这里把规则内联到每个 job。
+  # 规则：tag 触发时输出 [带版本号, latest] 两组 tag；branch/dispatch 时输出 dev tag。
+
   build-api:
     runs-on: ubuntu-latest
     steps:

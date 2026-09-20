@@ -27,11 +27,14 @@ import {
   SmilePlus,
   Type,
   ImagePlus,
+  Lock,
 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { cn } from "../lib/utils"
 import { FONT_SIZES, currentFontSize } from "../lib/fontSize"
 import { apiUploadImage } from "../api/client"
+import { store, DRAFT_ID } from "../store"
+import { passwordDialog } from "./PasswordDialog"
 
 /** 点击 ref 容器外部时触发 onClose（用于弹层点击外部自动收起） */
 function useClickOutside(
@@ -52,6 +55,8 @@ function useClickOutside(
 interface Props {
   editor: Editor
   onSetLink: () => void
+  entryId?: string | null
+  isLocked?: boolean
 }
 
 const COLORS = [
@@ -88,24 +93,68 @@ const EMOJI_GROUPS: { label: string; items: string[] }[] = [
   },
 ]
 
-export function ToolBar({ editor, onSetLink }: Props) {
+export function ToolBar({ editor, onSetLink, entryId, isLocked = false }: Props) {
   const [showColorPicker, setShowColorPicker] = useState(false)
   const [showHighlightPicker, setShowHighlightPicker] = useState(false)
   const [showFontSize, setShowFontSize] = useState(false)
+  const [showLockMenu, setShowLockMenu] = useState(false)
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const colorRef = useRef<HTMLDivElement>(null)
   const highlightRef = useRef<HTMLDivElement>(null)
   const fontSizeRef = useRef<HTMLDivElement>(null)
+  const lockMenuRef = useRef<HTMLDivElement>(null)
 
   useClickOutside(colorRef, () => setShowColorPicker(false))
   useClickOutside(highlightRef, () => setShowHighlightPicker(false))
   useClickOutside(fontSizeRef, () => setShowFontSize(false))
+  useClickOutside(lockMenuRef, () => setShowLockMenu(false))
 
   const closeAll = () => {
     setShowColorPicker(false)
     setShowHighlightPicker(false)
     setShowFontSize(false)
+    setShowLockMenu(false)
+  }
+
+  const isDraft = !entryId || entryId === DRAFT_ID
+
+  /** 未锁定：设置密码并锁定 */
+  const handleSetLock = async () => {
+    if (!entryId) return
+    const pwd = await passwordDialog({
+      title: "锁定这篇日记",
+      message: "设置密码后，查看内容需要输入该密码。",
+      confirmText: "锁定",
+    })
+    if (!pwd) return
+    try {
+      await store.lockEntry(entryId, pwd)
+    } catch (err) {
+      window.alert((err as Error)?.message || "锁定失败")
+    }
+  }
+
+  /** 已锁定且本会话已解锁：仅本地重新隐藏内容 */
+  const handleRelock = () => {
+    if (!entryId) return
+    store.relockEntry(entryId)
+  }
+
+  /** 已锁定：输入当前密码永久移除锁定 */
+  const handleRemoveLock = async () => {
+    if (!entryId) return
+    const pwd = await passwordDialog({
+      title: "解除密码锁定",
+      message: "输入当前密码，永久移除这篇日记的锁定。",
+      confirmText: "解除",
+    })
+    if (!pwd) return
+    try {
+      await store.unlockEntry(entryId, pwd, true)
+    } catch (err) {
+      window.alert((err as Error)?.message || "密码错误")
+    }
   }
 
   const handleInsertImage = async (file: File | undefined) => {
@@ -432,6 +481,56 @@ export function ToolBar({ editor, onSetLink }: Props) {
       >
         <LinkIcon className="w-4 h-4" />
       </Btn>
+
+      {/* 单篇密码锁定（草稿不提供） */}
+      {!isDraft && (
+        <div className="relative" ref={lockMenuRef}>
+          <button
+            type="button"
+            title={isLocked ? "已锁定：点击管理" : "密码锁定这篇日记"}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              if (isLocked) {
+                setShowLockMenu((v) => !v)
+              } else {
+                void handleSetLock()
+              }
+            }}
+            className={cn(
+              "w-8 h-8 flex items-center justify-center rounded-md transition-colors",
+              isLocked
+                ? "bg-primary/15 text-primary hover:bg-primary/20"
+                : "text-text-secondary hover:text-text hover:bg-surface-hover",
+            )}
+          >
+            <Lock className="w-4 h-4" />
+          </button>
+          {isLocked && showLockMenu && (
+            <div className="absolute right-0 top-full mt-2 w-44 rounded-xl bg-surface border border-border shadow-popover z-50 animate-fade-in-up py-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLockMenu(false)
+                  handleRelock()
+                }}
+                className="w-full text-left px-4 py-2 text-[13px] text-text hover:bg-surface-active transition-colors"
+              >
+                重新锁定（隐藏内容）
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLockMenu(false)
+                  void handleRemoveLock()
+                }}
+                className="w-full text-left px-4 py-2 text-[13px] text-danger hover:bg-surface-active transition-colors"
+              >
+                解除密码锁定
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 右侧留空 */}
       <div className="flex-1" />

@@ -1,7 +1,7 @@
 /**
  * 日记导出工具：导出为 Markdown(.md) / Word 兼容文档(.doc) / PDF（浏览器打印另存）。
  * PDF 走浏览器打印不是为了装额外依赖（jsPDF 体积大且中文字体难处理），
- * 用排版好的 HTML 新窗口，windows.print() 让用户“另存为 PDF”，中文清晰且所见即所得。
+ * 用排版好的 HTML 新窗口,windows.print() 让用户“另存为 PDF”，中文清晰且所见即所得。
  */
 
 function downloadBlob(filename: string, contentType: string, content: string) {
@@ -16,7 +16,7 @@ function downloadBlob(filename: string, contentType: string, content: string) {
   URL.revokeObjectURL(url)
 }
 
-/** 安全文件名：去掉 / \\ : * ? " < > | 等字符 */
+/** 安全文件名：去掉 / \ : * ? " < > | 等字符 */
 function safeName(name: string): string {
   const base = (name || "日记").replace(/[\\/:*?"<>|\s]+/g, "_").slice(0, 50)
   return base || "日记"

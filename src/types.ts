@@ -32,6 +32,7 @@ export interface JournalEntry {
   tags: string[]
   entryType: EntryType
   isPinned: boolean
+  isLocked: boolean      // 单篇密码锁定
   date?: string          // 自定义日记日期 YYYY-MM-DD，优先级高于 createdAt
   createdAt: string
   updatedAt: string

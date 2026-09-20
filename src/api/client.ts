@@ -130,6 +130,15 @@ export function apiDeleteEntry(id: string) {
 export function apiTogglePin(id: string) {
   return request<any>(`/entries/${id}/pin`, { method: "POST" }).then(mapEntry)
 }
+export function apiLockEntry(id: string, password: string) {
+  return request<any>(`/entries/${id}/lock`, { method: "POST", body: { password } }).then(mapEntry)
+}
+export function apiUnlockEntry(id: string, password: string, removeLock = false) {
+  return request<any>(`/entries/${id}/unlock`, {
+    method: "POST",
+    body: { password, remove_lock: removeLock },
+  }).then(mapEntry)
+}
 
 // ── Todos ──
 function mapTodo(t: any) {

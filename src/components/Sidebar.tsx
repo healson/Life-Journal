@@ -109,7 +109,11 @@ export function Sidebar({ onViewChange }: Props) {
 
             {/* 待办总计 → 穿透到待办 */}
             <button
-              onClick={() => { store.selectDate(null); onViewChange("todos") }}
+              onClick={() => {
+                store.closeAddTodo() // 只跳转，不默认新建待办
+                store.selectDate(null)
+                onViewChange("todos")
+              }}
               className="text-left p-2.5 rounded-lg bg-accent/5 border border-accent/10 hover:bg-accent/10 hover:border-accent/20 transition-colors cursor-pointer"
             >
               <div className="text-xs text-text-secondary">待办总计</div>

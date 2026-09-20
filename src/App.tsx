@@ -5,9 +5,11 @@ import { MarkdownEditor } from "./components/MarkdownEditor"
 import { TodoList } from "./components/TodoList"
 import { ConvertDrawer } from "./components/ConvertDrawer"
 import { LoginScreen } from "./components/LoginScreen"
+import { LockedEntryView } from "./components/LockedEntryView"
 import { ResizablePane } from "./components/ResizablePane"
 import { EnvelopeLayer } from "./components/EnvelopeLayer"
 import { ConfirmHost } from "./components/ConfirmDialog"
+import { PasswordHost } from "./components/PasswordDialog"
 import { store, DRAFT_ID } from "./store"
 import { useStore } from "./lib/observer"
 import { Wand2 } from "lucide-react"
@@ -24,6 +26,7 @@ export default function App() {
       <>
         <LoginScreen />
         <ConfirmHost />
+        <PasswordHost />
       </>
     )
   }
@@ -32,11 +35,14 @@ export default function App() {
   // 草稿态：selectedEntryId 为 DRAFT_ID 时，右侧编辑器绑定 state.draft
   const isDrafting = state.selectedEntryId === DRAFT_ID && !!state.draft
   const editing = selectedEntry || isDrafting
+  // 已锁定且本会话尚未输入密码的日记：右侧显示密码查看页
+  const lockedHidden =
+    !!selectedEntry?.isLocked && !state.sessionUnlockedIds.includes(selectedEntry.id)
 
   return (
     <div className="h-full flex bg-background overflow-hidden">
       {/* 左侧边栏（可拖动宽度）——正好容纳 18px 品牌标题 */}
-      <ResizablePane initialWidth={240} minWidth={220} maxWidth={420} side="right">
+      <ResizablePane initialWidth={280} minWidth={220} maxWidth={420} side="right">
         <Sidebar onViewChange={setView} />
       </ResizablePane>
 
@@ -49,9 +55,11 @@ export default function App() {
               <EntryList onNewTodo={() => { store.openAddTodo(); setView("todos") }} />
             </ResizablePane>
 
-            {/* 右侧：编辑器 */}
+            {/* 右侧：编辑器 / 锁定查看页 */}
             <div className="flex-1 min-w-0 min-h-0 flex flex-col relative">
-              {editing ? (
+              {lockedHidden && selectedEntry ? (
+                <LockedEntryView entry={selectedEntry} />
+              ) : editing ? (
                 <MarkdownEditor entryId={state.selectedEntryId!} />
               ) : (
                 <EmptyState onNew={() => store.createEntry({ entryType: "daily" })} />
@@ -82,6 +90,9 @@ export default function App() {
 
       {/* 全局居中确认框 */}
       <ConfirmHost />
+
+      {/* 全局密码输入框 */}
+      <PasswordHost />
     </div>
   )
 }

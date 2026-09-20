@@ -162,8 +162,10 @@ export function CalendarWidget() {
                   store.selectDate(null) // 再次点击取消
                 } else {
                   if (dayCounts[dateKey]) {
-                    // 该日期已有记录 → 按日期过滤中间栏
+                    // 该日期已有记录 → 按日期过滤中间栏，并打开该日期的新日记草稿
+                    //（草稿不新增日记，写完失焦提交后才真正创建）
                     store.selectDate(dateKey)
+                    store.startDraft(dateKey)
                   } else {
                     // 该日期没有任何记录 → 进入草稿编辑（不建文、文章数不变）
                     // 右侧编辑器切到该日期，失焦提交后才会真正创建日记

@@ -1,9 +1,10 @@
 import type { JournalEntry, Todo } from "./types"
 import { emitChange } from "./lib/events"
+import { startIdleTimer, stopIdleTimer } from "./lib/idle"
 import {
   apiCompleteTodo, apiCreateEntry, apiCreateTodo, apiDeleteEntry, apiDeleteTodo,
-  apiListEntries, apiListTodos, apiLogin, apiMe, apiRegister, apiTogglePin,
-  apiUpdateEntry, apiUpdateTodo, getToken, setToken,
+  apiListEntries, apiListTodos, apiLockEntry, apiLogin, apiMe, apiRegister,
+  apiTogglePin, apiUnlockEntry, apiUpdateEntry, apiUpdateTodo, getToken, setToken,
 } from "./api/client"
 
 /** 草稿条目的固定 id 标记（不在 entries 数组中） */
@@ -23,6 +24,7 @@ interface State {
   draft: JournalEntry | null
   booting: boolean       // 数据加载中
   bootError: string | null
+  sessionUnlockedIds: string[]  // 会话内已输入密码解锁的日记 id（刷新/登出后失效）
 }
 
 const state: State = {
@@ -39,6 +41,7 @@ const state: State = {
   draft: null,
   booting: false,
   bootError: null,
+  sessionUnlockedIds: [],
 }
 
 function toClient(
@@ -53,6 +56,7 @@ function toClient(
     tags: (e.tags ?? []).slice(),
     entryType: (e.entry_type ?? "daily") as JournalEntry["entryType"],
     isPinned: !!e.is_pinned,
+    isLocked: !!e.is_locked,
     date: e.date ?? undefined,
     createdAt: e.created_at,
     updatedAt: e.updated_at,
@@ -154,6 +158,7 @@ export const store = {
     state.isUnlocked = true
     await this.refreshMe()
     await loadData(true)
+    startIdleTimer(() => this.lock(), 10)
   },
 
   async register(username: string, password: string): Promise<void> {
@@ -162,16 +167,19 @@ export const store = {
     state.isUnlocked = true
     await this.refreshMe()
     await loadData(true)
+    startIdleTimer(() => this.lock(), 10)
   },
 
   /** 退出登录：清空 token、当前用户与本地数据 */
   lock() {
+    stopIdleTimer()
     state.isUnlocked = false
     state.currentUser = null
     state.entries = []
     state.todos = []
     state.draft = null
     state.selectedEntryId = null
+    state.sessionUnlockedIds = []
     setToken(null)
   },
 
@@ -180,6 +188,7 @@ export const store = {
     if (!state.isUnlocked || !getToken()) return
     await this.refreshMe()
     await loadData()
+    startIdleTimer(() => this.lock(), 10)
   },
 
   /** 重新从后端拉取当前用户数据（导入/清空后调用） */
@@ -205,6 +214,7 @@ export const store = {
       tags: data.tags ?? [],
       entryType: data.entryType ?? "daily",
       isPinned: false,
+      isLocked: false,
       date: data.date,
       createdAt: now,
       updatedAt: now,
@@ -230,7 +240,7 @@ export const store = {
     const now = new Date().toISOString()
     state.draft = {
       id: DRAFT_ID, title: "", content: "", plainText: "",
-      mood: undefined, tags: [], entryType: "daily", isPinned: false,
+      mood: undefined, tags: [], entryType: "daily", isPinned: false, isLocked: false,
       date, createdAt: now, updatedAt: now,
     }
     state.selectedEntryId = DRAFT_ID
@@ -289,6 +299,37 @@ export const store = {
         e.id === id ? { ...e, isPinned: !!server.is_pinned } : e)
       emitChange()
     }).catch(() => {})
+  },
+
+  // ── 单篇密码锁定 ──
+  /** 设置密码并锁定：本地立即置锁、清空正文（防留在内存），成功后合并服务端响应 */
+  lockEntry(id: string, password: string) {
+    state.entries = state.entries.map((e) =>
+      e.id === id ? { ...e, isLocked: true, content: "", plainText: "" } : e)
+    state.sessionUnlockedIds = state.sessionUnlockedIds.filter((x) => x !== id)
+    return apiLockEntry(id, password).then((server: any) => {
+      state.entries = state.entries.map((e) => (e.id === id ? { ...e, ...toClient(server) } : e))
+      emitChange()
+    })
+  },
+
+  /** 输入密码解锁：removeLock=false 临时查看（记入会话）；removeLock=true 永久移除密码 */
+  unlockEntry(id: string, password: string, removeLock = false) {
+    return apiUnlockEntry(id, password, removeLock).then((server: any) => {
+      const client = toClient(server)
+      state.entries = state.entries.map((e) => (e.id === id ? { ...e, ...client } : e))
+      state.sessionUnlockedIds = removeLock
+        ? state.sessionUnlockedIds.filter((x) => x !== id)
+        : [...state.sessionUnlockedIds.filter((x) => x !== id), id]
+      emitChange()
+    })
+  },
+
+  /** 重新隐藏内容（仅本地，密码保持不变） */
+  relockEntry(id: string) {
+    state.entries = state.entries.map((e) =>
+      e.id === id ? { ...e, content: "", plainText: "" } : e)
+    state.sessionUnlockedIds = state.sessionUnlockedIds.filter((x) => x !== id)
   },
 
   setFilter(type: State["filterType"]) { state.filterType = type },

@@ -15,14 +15,18 @@ Base.metadata.create_all(bind=engine)
 
 def _ensure_columns():
     """轻量迁移：create_all 只会新建缺失的表，不会给已存在的旧表补列。
-    升级到多用户版本后，旧库的 users 表缺少 is_admin 列，启动前需补上，
-    否则 _bootstrap_admin / 注册登录查询 is_admin 会抛 no such column，导致容器崩溃(502)。"""
+    升级后旧库缺少新列时，启动前需补上，否则查询会抛 no such column，导致容器崩溃(502)。
+    注意：SQLite 的 ALTER TABLE 只能添加 nullable 列，新列必须允许为空。"""
     if engine.dialect.name != "sqlite":
         return
     with engine.connect() as conn:
         cols = {row["name"] for row in conn.execute(text("PRAGMA table_info(users)")).mappings()}
         if cols and "is_admin" not in cols:
             conn.execute(text("ALTER TABLE users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT 0"))
+            conn.commit()
+        cols = {row["name"] for row in conn.execute(text("PRAGMA table_info(journal_entries)")).mappings()}
+        if cols and "lock_password_hash" not in cols:
+            conn.execute(text("ALTER TABLE journal_entries ADD COLUMN lock_password_hash VARCHAR(255)"))
             conn.commit()
 
 

@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react"
 import { store } from "../store"
+import { cn } from "../lib/utils"
 
 type Mode = "login" | "register"
 
@@ -118,7 +119,7 @@ export function LoginScreen() {
         </button>
 
         {mode === "login" && (
-          <p className="mt-6 text-[11px] text-text-muted text-center leading-relaxed">
+          <p className={cn("mt-6 text-[11px] text-text-muted text-center leading-relaxed")}>
             若首次登录，用注册或已有账号登录即可。
             <br />
             第一个注册的账号会成为管理员。

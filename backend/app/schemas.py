@@ -83,10 +83,20 @@ class EntryUpdate(BaseModel):
 
 class EntryOut(EntryBase):
     id: int
+    is_locked: bool = False
     created_at: datetime
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class EntryLockRequest(BaseModel):
+    password: str = Field(min_length=1, max_length=128)
+
+
+class EntryUnlockRequest(BaseModel):
+    password: str = Field(min_length=1, max_length=128)
+    remove_lock: bool = False  # True = 校验通过后永久移除密码
 
 
 # ── Todo ──

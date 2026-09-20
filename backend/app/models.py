@@ -59,9 +59,14 @@ class JournalEntry(Base):
     tags = Column(JSON, nullable=False, default=list)          # list[str]
     entry_type = Column(String(32), nullable=False, default="daily")  # daily/inspiration/behavior
     is_pinned = Column(Boolean, nullable=False, default=False)
+    lock_password_hash = Column(String(255), nullable=True)   # 单篇密码锁定（bcrypt hash，空=未锁定）
     date = Column(String(10), nullable=True)                   # 逻辑日期 YYYY-MM-DD（可空）
     created_at = Column(UTCDateTime, default=utcnow)
     updated_at = Column(UTCDateTime, default=utcnow, onupdate=utcnow)
+
+    @property
+    def is_locked(self) -> bool:
+        return bool(self.lock_password_hash)
 
     owner = relationship("User", back_populates="entries")
 
