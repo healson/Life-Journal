@@ -1,13 +1,25 @@
 name: build-and-push-images
 
+# 发布策略（严格拆分）：
+#   - push 到 main        → 构建 dev 镜像（:api-dev / :web-dev），供开发预览，不动 latest
+#   - 打 release git tag  → 构建正式镜像（:api-<版本> / :web-<版本>）并同步更新 :api / :web
+#                          （即 latest），让 NAS 用 docker compose pull && up -d 拉到的
+#                          始终是最新的正式发布版本，且可精确回滚到某个版本号。
+#
+# 用法：正式发布时打 tag，如  git tag v0.4.1 && git push origin v0.4.1
+
 on:
   push:
     branches: [main]
+    tags: ["v**"]
   workflow_dispatch:
 
 permissions:
   contents: read
   packages: write
+
+env:
+  IMAGE: ghcr.io/healson/life-journal
 
 jobs:
   build-api:
@@ -23,12 +35,22 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Compute image tags
+        id: tags
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            VER="${GITHUB_REF_NAME#v}"
+            echo "TAGS=${{ env.IMAGE }}:api-${VER},${{ env.IMAGE }}:api" >> "$GITHUB_OUTPUT"
+          else
+            echo "TAGS=${{ env.IMAGE }}:api-dev" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: docker/build-push-action@v6
         with:
           context: ./backend
           file: ./backend/Dockerfile
           push: true
-          tags: ghcr.io/healson/life-journal:api
+          tags: ${{ steps.tags.outputs.TAGS }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -45,16 +67,27 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Compute image tags
+        id: tags
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            VER="${GITHUB_REF_NAME#v}"
+            echo "TAGS=${{ env.IMAGE }}:web-${VER},${{ env.IMAGE }}:web" >> "$GITHUB_OUTPUT"
+          else
+            echo "TAGS=${{ env.IMAGE }}:web-dev" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ghcr.io/healson/life-journal:web
+          tags: ${{ steps.tags.outputs.TAGS }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # 两个镜像推送完成后，清理 GHCR 上被覆盖的无 tag 旧版本（每次升级产生的残留）
+  # 两个镜像推送完成后，清理 GHCR 上被覆盖的无 tag 旧版本（每次升级产生的残留）。
+  # 注意：带版本号的镜像（如 :api-0.4.1）不会被删除，保证可回滚。
   prune:
     runs-on: ubuntu-latest
     needs: [build-api, build-web]

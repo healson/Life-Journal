@@ -251,15 +251,14 @@ function extractTaskCandidates(content: string, _title: string): DraftTodo[] {
       continue
     }
 
-    // 匹配有序列表中包含 "要做"、"需要"、"必须" 的
+    // 匹配有序列表：该行含关键词"待办"即抓取为候选待办
     const orderedMatch = line.match(/^\s*\d+\.\s*(.+)$/)
     if (orderedMatch) {
       const text = orderedMatch[1].trim()
-      const keywords = ["今天", "明天", "要", "需要", "必须", "记得", "别忘了"]
-      if (keywords.some((k) => text.includes(k))) {
+      if (text.includes("待办")) {
         result.push({
           title: text,
-          priority: text.includes("必须") ? 1 : 2,
+          priority: 2,
           dueDate: "",
           remindAt: "",
         })

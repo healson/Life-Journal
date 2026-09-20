@@ -1,4 +1,4 @@
-import { LogOut, Anchor, Settings } from "lucide-react"
+import { LogOut, Anchor, Settings, NotebookPen } from "lucide-react"
 import { useState } from "react"
 import { store } from "../store"
 import { useStore } from "../lib/observer"
@@ -52,11 +52,12 @@ export function Sidebar({ onViewChange }: Props) {
     <aside className="h-full bg-surface border-r border-border flex flex-col overflow-hidden">
       {/* Logo + 退出 */}
       <div className="px-4 py-4 border-b border-border-light flex items-center gap-2 flex-shrink-0">
-        <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-          <span className="text-white text-sm">📓</span>
+        {/* 图标：用主题主色 SVG，随主题自适应变色 */}
+        <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shrink-0">
+          <NotebookPen className="w-5 h-5 text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-bold text-text truncate">人生记趣录</div>
+          <div className="text-[24px] font-bold text-text truncate leading-snug">人生记趣录</div>
           <div className="text-[10px] text-text-muted truncate">
             {state.currentUser?.username ? `${state.currentUser.username}` : "Life Journal"}
           </div>
@@ -93,7 +94,7 @@ export function Sidebar({ onViewChange }: Props) {
               className="text-left p-2.5 rounded-lg bg-primary/5 border border-primary/10 hover:bg-primary/10 hover:border-primary/20 transition-colors cursor-pointer"
             >
               <div className="text-[10px] text-text-muted">日记总计</div>
-              <div className="text-sm font-bold text-primary leading-tight">
+              <div className="text-[18px] font-bold text-primary leading-tight">
                 {totalEntries}<span className="text-xs font-normal ml-0.5">篇</span>
               </div>
             </button>
@@ -101,7 +102,7 @@ export function Sidebar({ onViewChange }: Props) {
             {/* 日均 → 纯展示，不穿透 */}
             <div className="text-left p-2.5 rounded-lg bg-primary/5 border border-primary/10">
               <div className="text-[10px] text-text-muted">日均</div>
-              <div className="text-sm font-bold text-primary leading-tight">
+              <div className="text-[18px] font-bold text-primary leading-tight">
                 {dailyAvg}<span className="text-xs font-normal ml-0.5">篇</span>
               </div>
             </div>
@@ -112,7 +113,7 @@ export function Sidebar({ onViewChange }: Props) {
               className="text-left p-2.5 rounded-lg bg-accent/5 border border-accent/10 hover:bg-accent/10 hover:border-accent/20 transition-colors cursor-pointer"
             >
               <div className="text-[10px] text-text-muted">待办总计</div>
-              <div className="text-sm font-bold text-accent leading-tight">
+              <div className="text-[18px] font-bold text-accent leading-tight">
                 {totalTodos}<span className="text-xs font-normal ml-0.5">个</span>
               </div>
             </button>
@@ -120,7 +121,7 @@ export function Sidebar({ onViewChange }: Props) {
             {/* 完成率 → 纯展示，不穿透 */}
             <div className="text-left p-2.5 rounded-lg bg-accent/5 border border-accent/10">
               <div className="text-[10px] text-text-muted">完成率</div>
-              <div className="text-sm font-bold text-accent leading-tight">
+              <div className="text-[18px] font-bold text-accent leading-tight">
                 {completionRate}<span className="text-xs font-normal ml-0.5">%</span>
               </div>
             </div>
@@ -181,7 +182,7 @@ function SidebarSection({
             accent ? "bg-gradient-to-b from-accent to-accent-light" : "bg-border",
           )}
         />
-        <span className="text-[11px] font-semibold text-text-muted uppercase tracking-widest">
+        <span className="text-[20px] font-bold text-text-muted uppercase tracking-widest">
           {title}
         </span>
       </div>

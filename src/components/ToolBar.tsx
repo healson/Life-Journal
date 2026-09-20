@@ -113,6 +113,7 @@ export function ToolBar({ editor, onSetLink }: Props) {
     <button
       type="button"
       title={title}
+      onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
       className={cn(
         "w-8 h-8 flex items-center justify-center rounded-md text-text-secondary hover:text-text hover:bg-surface-hover transition-colors",
@@ -506,6 +507,7 @@ function EmojiControl({ editor, onOpen }: { editor: Editor; onOpen: () => void }
       <button
         type="button"
         title="插入表情"
+        onMouseDown={(e) => e.preventDefault()}
         onClick={() => {
           const next = !open
           setOpen(next)
