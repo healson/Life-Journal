@@ -28,10 +28,26 @@ import {
   Type,
   ImagePlus,
 } from "lucide-react"
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { cn } from "../lib/utils"
 import { FONT_SIZES, currentFontSize } from "../lib/fontSize"
 import { apiUploadImage } from "../api/client"
+
+/** 点击 ref 容器外部时触发 onClose（用于弹层点击外部自动收起） */
+function useClickOutside(
+  ref: React.RefObject<HTMLElement | null>,
+  onClose: () => void,
+) {
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onCloseRef.current()
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [ref])
+}
 
 interface Props {
   editor: Editor
@@ -78,6 +94,13 @@ export function ToolBar({ editor, onSetLink }: Props) {
   const [showFontSize, setShowFontSize] = useState(false)
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const colorRef = useRef<HTMLDivElement>(null)
+  const highlightRef = useRef<HTMLDivElement>(null)
+  const fontSizeRef = useRef<HTMLDivElement>(null)
+
+  useClickOutside(colorRef, () => setShowColorPicker(false))
+  useClickOutside(highlightRef, () => setShowHighlightPicker(false))
+  useClickOutside(fontSizeRef, () => setShowFontSize(false))
 
   const closeAll = () => {
     setShowColorPicker(false)
@@ -201,7 +224,7 @@ export function ToolBar({ editor, onSetLink }: Props) {
       <Divider />
 
       {/* 颜色 */}
-      <div className="relative">
+      <div className="relative" ref={colorRef}>
         <button
           title="文字颜色"
           onClick={() => {
@@ -231,7 +254,7 @@ export function ToolBar({ editor, onSetLink }: Props) {
       </div>
 
       {/* 高亮 */}
-      <div className="relative">
+      <div className="relative" ref={highlightRef}>
         <button
           title="高亮背景"
           onClick={() => {
@@ -261,7 +284,7 @@ export function ToolBar({ editor, onSetLink }: Props) {
       </div>
 
       {/* 字号 */}
-      <div className="relative">
+      <div className="relative" ref={fontSizeRef}>
         <button
           type="button"
           title="字体大小"
@@ -502,8 +525,10 @@ function FontSizeControl({
 
 function EmojiControl({ editor, onOpen }: { editor: Editor; onOpen: () => void }) {
   const [open, setOpen] = useState(false)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  useClickOutside(wrapperRef, () => setOpen(false))
   return (
-    <div className="relative">
+    <div className="relative" ref={wrapperRef}>
       <button
         type="button"
         title="插入表情"
