@@ -235,27 +235,17 @@ function extractTaskCandidates(content: string, _title: string): DraftTodo[] {
   const lines = content.split("\n")
   const result: DraftTodo[] = []
 
-  for (const line of lines) {
-    // 匹配 Markdown 任务列表: - [ ] xxx 或 - [x] xxx
-    const taskMatch = line.match(/^\s*[-*]\s*\[\s*\]?\s*(.+)$/)
-    if (taskMatch) {
-      const text = taskMatch[1].trim().replace(/[*`_>#]+/g, "").trim()
-      if (text) {
-        result.push({
-          title: text,
-          priority: 2,
-          dueDate: "",
-          remindAt: "",
-        })
-      }
-      continue
-    }
+  // 剥离 HTML 标签（<span style=...> 等格式化残留），并清掉常见 markdown 符号
+  const clean = (s: string) =>
+    s.replace(/<[^>]*>/g, "").replace(/[*`_>#-]+/g, "").trim()
 
-    // 匹配有序列表：该行含关键词"待办"即抓取为候选待办
-    const orderedMatch = line.match(/^\s*\d+\.\s*(.+)$/)
-    if (orderedMatch) {
-      const text = orderedMatch[1].trim()
-      if (text.includes("待办")) {
+  for (const line of lines) {
+    // 去掉有序列表编号（如 "1. xxx"）后的正文
+    const bare = line.replace(/^\s*\d+[.)]\s*/, "")
+    // 只要该行出现"待办"或"待办："就采集，剔除该关键词后再清洗
+    if (/待办[:：]?\s*/.test(bare)) {
+      const text = clean(bare.replace(/待办[:：]?\s*/, ""))
+      if (text) {
         result.push({
           title: text,
           priority: 2,

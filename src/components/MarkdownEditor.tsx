@@ -206,8 +206,9 @@ function EntryMetaBar({ entry, onSave }: {
         </div>
 
         {/* 标签（收缩 + 内部横向滚动） */}
-        <div className="flex-1 min-w-0">
-          <div className="overflow-x-auto no-scrollbar">
+        <div className="flex-1 min-w-0 flex items-center gap-1.5">
+          <span className="text-xs font-medium text-text-muted flex-shrink-0">标签</span>
+          <div className="overflow-x-auto no-scrollbar min-w-0">
             <TagInput
               tags={entry.tags}
               onChange={(tags) => onSave({ tags })}
