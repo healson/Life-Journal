@@ -93,7 +93,7 @@ export function Sidebar({ onViewChange }: Props) {
               onClick={() => { store.selectDate(null); onViewChange("entries") }}
               className="text-left p-2.5 rounded-lg bg-primary/5 border border-primary/10 hover:bg-primary/10 hover:border-primary/20 transition-colors cursor-pointer"
             >
-              <div className="text-[10px] text-text-muted">日记总计</div>
+              <div className="text-[14px] text-text-secondary">日记总计</div>
               <div className="text-[18px] font-bold text-primary leading-tight">
                 {totalEntries}<span className="text-xs font-normal ml-0.5">篇</span>
               </div>
@@ -101,7 +101,7 @@ export function Sidebar({ onViewChange }: Props) {
 
             {/* 日均 → 纯展示，不穿透 */}
             <div className="text-left p-2.5 rounded-lg bg-primary/5 border border-primary/10">
-              <div className="text-[10px] text-text-muted">日均</div>
+              <div className="text-[14px] text-text-secondary">日均</div>
               <div className="text-[18px] font-bold text-primary leading-tight">
                 {dailyAvg}<span className="text-xs font-normal ml-0.5">篇</span>
               </div>
@@ -112,7 +112,7 @@ export function Sidebar({ onViewChange }: Props) {
               onClick={() => { store.selectDate(null); onViewChange("todos") }}
               className="text-left p-2.5 rounded-lg bg-accent/5 border border-accent/10 hover:bg-accent/10 hover:border-accent/20 transition-colors cursor-pointer"
             >
-              <div className="text-[10px] text-text-muted">待办总计</div>
+              <div className="text-[14px] text-text-secondary">待办总计</div>
               <div className="text-[18px] font-bold text-accent leading-tight">
                 {totalTodos}<span className="text-xs font-normal ml-0.5">个</span>
               </div>
@@ -120,7 +120,7 @@ export function Sidebar({ onViewChange }: Props) {
 
             {/* 完成率 → 纯展示，不穿透 */}
             <div className="text-left p-2.5 rounded-lg bg-accent/5 border border-accent/10">
-              <div className="text-[10px] text-text-muted">完成率</div>
+              <div className="text-[14px] text-text-secondary">完成率</div>
               <div className="text-[18px] font-bold text-accent leading-tight">
                 {completionRate}<span className="text-xs font-normal ml-0.5">%</span>
               </div>
