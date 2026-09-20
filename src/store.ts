@@ -293,10 +293,10 @@ export const store = {
 
   setFilter(type: State["filterType"]) { state.filterType = type },
   setSearch(q: string) { state.searchQuery = q },
-  openConvertDrawer() { state.showConvertDrawer = true },
-  closeConvertDrawer() { state.showConvertDrawer = false },
-  openAddTodo() { state.showAddTodo = true },
-  closeAddTodo() { state.showAddTodo = false },
+  openConvertDrawer() { state.showConvertDrawer = true; emitChange() },
+  closeConvertDrawer() { state.showConvertDrawer = false; emitChange() },
+  openAddTodo() { state.showAddTodo = true; emitChange() },
+  closeAddTodo() { state.showAddTodo = false; emitChange() },
 
   // ── Todos ──
   addTodos(todos: Omit<Todo, "id" | "createdAt" | "syncedToCalendar">[]): Todo[] {
