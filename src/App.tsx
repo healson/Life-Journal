@@ -35,8 +35,8 @@ export default function App() {
 
   return (
     <div className="h-full flex bg-background overflow-hidden">
-      {/* 左侧边栏（可拖动宽度）——默认加宽以容纳 24px 品牌标题 */}
-      <ResizablePane initialWidth={300} minWidth={260} maxWidth={420} side="right">
+      {/* 左侧边栏（可拖动宽度）——宽度容纳 18px 品牌标题 */}
+      <ResizablePane initialWidth={280} minWidth={240} maxWidth={420} side="right">
         <Sidebar onViewChange={setView} />
       </ResizablePane>
 

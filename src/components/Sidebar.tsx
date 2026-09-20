@@ -57,8 +57,8 @@ export function Sidebar({ onViewChange }: Props) {
           <NotebookPen className="w-5 h-5 text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[24px] font-bold text-text truncate leading-snug">人生记趣录</div>
-          <div className="text-[10px] text-text-muted truncate">
+          <div className="text-[18px] font-bold text-text truncate leading-snug">人生记趣录</div>
+          <div className="text-[13px] text-text-secondary truncate">
             {state.currentUser?.username ? `${state.currentUser.username}` : "Life Journal"}
           </div>
         </div>
@@ -93,7 +93,7 @@ export function Sidebar({ onViewChange }: Props) {
               onClick={() => { store.selectDate(null); onViewChange("entries") }}
               className="text-left p-2.5 rounded-lg bg-primary/5 border border-primary/10 hover:bg-primary/10 hover:border-primary/20 transition-colors cursor-pointer"
             >
-              <div className="text-[14px] text-text-secondary">日记总计</div>
+              <div className="text-xs text-text-secondary">日记总计</div>
               <div className="text-[18px] font-bold text-primary leading-tight">
                 {totalEntries}<span className="text-xs font-normal ml-0.5">篇</span>
               </div>
@@ -101,7 +101,7 @@ export function Sidebar({ onViewChange }: Props) {
 
             {/* 日均 → 纯展示，不穿透 */}
             <div className="text-left p-2.5 rounded-lg bg-primary/5 border border-primary/10">
-              <div className="text-[14px] text-text-secondary">日均</div>
+              <div className="text-xs text-text-secondary">日均</div>
               <div className="text-[18px] font-bold text-primary leading-tight">
                 {dailyAvg}<span className="text-xs font-normal ml-0.5">篇</span>
               </div>
@@ -112,7 +112,7 @@ export function Sidebar({ onViewChange }: Props) {
               onClick={() => { store.selectDate(null); onViewChange("todos") }}
               className="text-left p-2.5 rounded-lg bg-accent/5 border border-accent/10 hover:bg-accent/10 hover:border-accent/20 transition-colors cursor-pointer"
             >
-              <div className="text-[14px] text-text-secondary">待办总计</div>
+              <div className="text-xs text-text-secondary">待办总计</div>
               <div className="text-[18px] font-bold text-accent leading-tight">
                 {totalTodos}<span className="text-xs font-normal ml-0.5">个</span>
               </div>
@@ -120,7 +120,7 @@ export function Sidebar({ onViewChange }: Props) {
 
             {/* 完成率 → 纯展示，不穿透 */}
             <div className="text-left p-2.5 rounded-lg bg-accent/5 border border-accent/10">
-              <div className="text-[14px] text-text-secondary">完成率</div>
+              <div className="text-xs text-text-secondary">完成率</div>
               <div className="text-[18px] font-bold text-accent leading-tight">
                 {completionRate}<span className="text-xs font-normal ml-0.5">%</span>
               </div>
@@ -152,7 +152,7 @@ export function Sidebar({ onViewChange }: Props) {
               )
             })}
           </div>
-          <div className="mt-1 text-[10px] text-text-muted px-2 flex items-center gap-1">
+          <div className="mt-1 text-xs text-text-muted px-2 flex items-center gap-1">
             <Anchor className="w-3 h-3" />
             共 {tagCloud.length} 个锚点
           </div>
@@ -182,7 +182,7 @@ function SidebarSection({
             accent ? "bg-gradient-to-b from-accent to-accent-light" : "bg-border",
           )}
         />
-        <span className="text-[20px] font-bold text-text-muted uppercase tracking-widest">
+        <span className="text-[13px] font-semibold text-text-muted tracking-wide">
           {title}
         </span>
       </div>
