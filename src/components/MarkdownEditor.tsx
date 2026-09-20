@@ -188,7 +188,7 @@ function EntryMetaBar({ entry, onSave }: {
 
         {/* 心情 */}
         <div className="flex items-center gap-1">
-          <span className="text-xs text-text-muted mr-1">心情</span>
+          <span className="text-xs font-medium text-text-muted mr-1">心情</span>
           {moods.map((m) => (
             <button
               key={m.key}
@@ -385,7 +385,7 @@ function DateInputWithEnvelope({ currentDate, onPick }: {
 
   return (
     <div className="flex items-center gap-1.5 relative" ref={wrapRef}>
-      <span className="text-xs text-text-muted">日期</span>
+      <span className="text-xs font-medium text-text-muted">日期</span>
       <button
         ref={btnRef}
         type="button"

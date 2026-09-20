@@ -116,7 +116,7 @@ export function EntryList() {
         </div>
 
         {/* 状态条 */}
-        <div className="flex items-center gap-2 text-[11px] whitespace-nowrap">
+        <div className="flex items-center gap-2 text-[13px] whitespace-nowrap">
           {hasDateFilter && dateFiltered ? (
             <>
               <span className="px-2 py-0.5 rounded-md bg-accent/15 text-accent font-medium">
@@ -153,7 +153,7 @@ export function EntryList() {
             {/* 当天待办 */}
             {dateFiltered.dayTodos.length > 0 && (
               <div>
-                <div className="px-2 mb-2 text-[11px] font-medium text-accent uppercase tracking-wider flex items-center gap-1.5">
+                <div className="px-2 mb-2 text-xs font-medium text-accent flex items-center gap-1.5">
                   <CheckSquare className="w-3 h-3" />
                   今日待办 · {dateFiltered.dayTodos.length}
                 </div>
@@ -241,7 +241,7 @@ function DateEntriesSection({
   const state = useStore()
   return (
     <div>
-      <div className="px-2 mb-2 text-[11px] font-medium text-primary uppercase tracking-wider flex items-center gap-1.5">
+      <div className="px-2 mb-2 text-xs font-medium text-primary flex items-center gap-1.5">
         {icon}
         {title}
       </div>
@@ -284,7 +284,7 @@ function GroupedByDate({
     <>
       {grouped.map(([date, list]) => (
         <div key={date}>
-          <div className="px-2 mb-2 text-[11px] font-medium text-text-muted uppercase tracking-wider">
+          <div className="px-2 mb-2 text-xs font-medium text-text-muted">
             {formatDateLabel(date)} · {list.length} 条
           </div>
           <div className="space-y-2">
