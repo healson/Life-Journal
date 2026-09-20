@@ -19,6 +19,7 @@ interface State {
   filterType: "all" | "daily" | "inspiration" | "behavior"
   searchQuery: string
   showConvertDrawer: boolean
+  showAddTodo: boolean   // “办”按钮触发的全局“新建待办”标志
   draft: JournalEntry | null
   booting: boolean       // 数据加载中
   bootError: string | null
@@ -34,6 +35,7 @@ const state: State = {
   filterType: "all",
   searchQuery: "",
   showConvertDrawer: false,
+  showAddTodo: false,
   draft: null,
   booting: false,
   bootError: null,
@@ -293,6 +295,8 @@ export const store = {
   setSearch(q: string) { state.searchQuery = q },
   openConvertDrawer() { state.showConvertDrawer = true },
   closeConvertDrawer() { state.showConvertDrawer = false },
+  openAddTodo() { state.showAddTodo = true },
+  closeAddTodo() { state.showAddTodo = false },
 
   // ── Todos ──
   addTodos(todos: Omit<Todo, "id" | "createdAt" | "syncedToCalendar">[]): Todo[] {

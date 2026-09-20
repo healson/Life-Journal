@@ -35,8 +35,8 @@ export default function App() {
 
   return (
     <div className="h-full flex bg-background overflow-hidden">
-      {/* 左侧边栏（可拖动宽度）——宽度容纳 18px 品牌标题 */}
-      <ResizablePane initialWidth={280} minWidth={240} maxWidth={420} side="right">
+      {/* 左侧边栏（可拖动宽度）——正好容纳 18px 品牌标题 */}
+      <ResizablePane initialWidth={240} minWidth={220} maxWidth={420} side="right">
         <Sidebar onViewChange={setView} />
       </ResizablePane>
 
@@ -46,7 +46,7 @@ export default function App() {
           <>
             {/* 中间：日记列表（可拖动宽度） */}
             <ResizablePane initialWidth={320} minWidth={240} maxWidth={480} side="right">
-              <EntryList />
+              <EntryList onNewTodo={() => { store.openAddTodo(); setView("todos") }} />
             </ResizablePane>
 
             {/* 右侧：编辑器 */}

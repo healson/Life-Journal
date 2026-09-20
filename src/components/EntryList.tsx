@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { Search, X, History, Calendar, CheckSquare, Plus } from "lucide-react"
+import { Search, X, History, Calendar, CheckSquare } from "lucide-react"
 import { store } from "../store"
 import { useStore } from "../lib/observer"
 import { EntryCard } from "./EntryCard"
@@ -17,7 +17,7 @@ function entryDateObj(e: JournalEntry): Date {
   return new Date(y, m - 1, day)
 }
 
-export function EntryList() {
+export function EntryList({ onNewTodo }: { onNewTodo?: () => void }) {
   const state = useStore()
   const [searchLocal, setSearchLocal] = useState("")
 
@@ -215,13 +215,20 @@ export function EntryList() {
         )}
       </div>
 
-      {/* 浮动新建按钮（跟随主题点缀色） */}
+      {/* 浮动操作按钮：右下“记”（新建日记）+ 左下“办”（新建待办） */}
       <button
         onClick={() => store.createEntry({ entryType: "daily" })}
-        className="absolute bottom-5 right-5 w-12 h-12 rounded-full bg-accent hover:bg-accent-light active:scale-95 text-white shadow-lg shadow-accent/30 flex items-center justify-center transition-all z-20 group"
+        className="absolute bottom-5 right-5 w-12 h-12 rounded-full bg-accent hover:bg-accent-light active:scale-95 text-white shadow-lg shadow-accent/30 flex items-center justify-center transition-all z-20 text-xl font-medium"
         title="新建日记"
       >
-        <Plus className="w-6 h-6 transition-transform group-hover:rotate-90" />
+        记
+      </button>
+      <button
+        onClick={() => onNewTodo?.()}
+        className="absolute bottom-5 left-5 w-12 h-12 rounded-full bg-accent hover:bg-accent-light active:scale-95 text-white shadow-lg shadow-accent/30 flex items-center justify-center transition-all z-20 text-xl font-medium"
+        title="新建待办"
+      >
+        办
       </button>
     </div>
   )

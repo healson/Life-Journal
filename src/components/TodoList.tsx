@@ -12,8 +12,11 @@ type Filter = "pending" | "in_progress" | "done" | "all"
 export function TodoList() {
   const state = useStore()
   const [filter, setFilter] = useState<Filter>("all")
-  const [showAdd, setShowAdd] = useState(false)
   const [editing, setEditing] = useState<Todo | null>(null)
+
+  // 新建待办弹窗由全局标志驱动（支持"办"按钮从其它视图触发）
+  const showAdd = state.showAddTodo
+  const closeAdd = () => store.closeAddTodo()
 
   const filtered = useMemo(() => {
     let list = [...state.todos]
@@ -51,7 +54,7 @@ export function TodoList() {
         <h1 className="text-2xl font-bold text-text">待办列表</h1>
         <div className="flex-1" />
         <button
-          onClick={() => setShowAdd(true)}
+          onClick={() => store.openAddTodo()}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white text-sm hover:bg-primary-light transition-colors"
         >
           <Plus className="w-4 h-4" />
@@ -103,7 +106,7 @@ export function TodoList() {
       </div>
 
       {showAdd && (
-        <TodoDialog onClose={() => setShowAdd(false)} />
+        <TodoDialog onClose={closeAdd} />
       )}
       {editing && (
         <TodoDialog initial={editing} onClose={() => setEditing(null)} />
