@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useMemo } from "react"
 import { Search, X, History, Calendar, CheckSquare } from "lucide-react"
 import { store } from "../store"
 import { useStore } from "../lib/observer"
@@ -19,7 +19,6 @@ function entryDateObj(e: JournalEntry): Date {
 
 export function EntryList({ onNewTodo }: { onNewTodo?: () => void }) {
   const state = useStore()
-  const [searchLocal, setSearchLocal] = useState("")
 
   const selectedDate = state.selectedDate // "YYYY-MM-DD"
 
@@ -29,7 +28,8 @@ export function EntryList({ onNewTodo }: { onNewTodo?: () => void }) {
     if (state.filterType !== "all") {
       list = list.filter((e) => e.entryType === state.filterType)
     }
-    const q = (searchLocal || state.searchQuery).toLowerCase().trim()
+    // 搜索关键词统一由 store.searchQuery 驱动（标签点击 / 输入框 / 清除共用一份状态）
+    const q = state.searchQuery.toLowerCase().trim()
     if (q) {
       list = list.filter(
         (e) =>
@@ -42,7 +42,7 @@ export function EntryList({ onNewTodo }: { onNewTodo?: () => void }) {
       if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1
       return entryDateObj(b).getTime() - entryDateObj(a).getTime()
     })
-  }, [state.entries, state.filterType, state.searchQuery, searchLocal])
+  }, [state.entries, state.filterType, state.searchQuery])
 
   // 根据日期过滤 + 匹配的待办
   const dateFiltered = useMemo(() => {
@@ -92,21 +92,14 @@ export function EntryList({ onNewTodo }: { onNewTodo?: () => void }) {
           <input
             type="text"
             placeholder="搜索日记…"
-            value={searchLocal}
-            onChange={(e) => {
-              const v = e.target.value
-              setSearchLocal(v)
-              store.setSearch(v) // 同步到全局，供卡片高亮关键词
-            }}
+            value={state.searchQuery}
+            onChange={(e) => store.setSearch(e.target.value)}
             className="w-full pl-9 pr-9 py-2 rounded-lg bg-surface border border-border-light text-sm outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10 transition-all"
           />
-          {searchLocal && (
+          {state.searchQuery && (
             <button
               type="button"
-              onClick={() => {
-                setSearchLocal("")
-                store.setSearch("")
-              }}
+              onClick={() => store.setSearch("")}
               title="清除搜索"
               className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full text-text-muted hover:text-text hover:bg-surface-hover transition-colors"
             >
@@ -143,7 +136,7 @@ export function EntryList({ onNewTodo }: { onNewTodo?: () => void }) {
       <div className="flex-1 overflow-y-auto p-3 pb-20 space-y-4">
         {allFiltered.length === 0 && !hasDateFilter && (
           <div className="text-center py-12 text-text-muted text-sm">
-            {searchLocal ? "没搜到匹配的日记" : "还没有日记 ✨"}
+            {state.searchQuery ? "没搜到匹配的日记" : "还没有日记 ✨"}
           </div>
         )}
 

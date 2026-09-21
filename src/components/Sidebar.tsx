@@ -88,9 +88,9 @@ export function Sidebar({ onViewChange }: Props) {
         {/* 分类 2: 成就 —— 两行四格 */}
         <SidebarSection title="成就">
           <div className="grid grid-cols-2 gap-2">
-            {/* 日记总计 → 点击穿透到日记 */}
+            {/* 日记总计 → 回到完整列表（清日期过滤与标签/关键词搜索） */}
             <button
-              onClick={() => { store.selectDate(null); onViewChange("entries") }}
+              onClick={() => { store.setSearch(""); store.selectDate(null); onViewChange("entries") }}
               className="text-left p-2.5 rounded-lg bg-primary/5 border border-primary/10 hover:bg-primary/10 hover:border-primary/20 transition-colors cursor-pointer"
             >
               <div className="text-xs text-text-secondary">日记总计</div>
