@@ -197,7 +197,11 @@ export const store = {
   },
 
   // ── 日历 ──
-  selectDate(dateStr: string | null) { state.selectedDate = dateStr },
+  selectDate(dateStr: string | null) {
+    state.selectedDate = dateStr
+    // 清空日期过滤时，一并取消由日历产生的草稿（回到不受日历影响的完整列表）
+    if (dateStr === null) this.cancelDraft()
+  },
 
   // ── Entries ──
   selectEntry(id: string | null) { state.selectedEntryId = id },
@@ -266,6 +270,13 @@ export const store = {
     } else {
       state.selectedEntryId = null
     }
+  },
+
+  /** 取消当前草稿（空草稿安全丢弃；有内容的草稿会在编辑器失焦时先提交保存） */
+  cancelDraft() {
+    if (state.selectedEntryId !== DRAFT_ID) return
+    state.draft = null
+    state.selectedEntryId = null
   },
 
   updateEntry(id: string, patch: Partial<JournalEntry>) {

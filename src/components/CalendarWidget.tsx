@@ -84,10 +84,12 @@ export function CalendarWidget() {
 
   const selectedDate = state.selectedDate
 
-  // 回到今天：视图切到今天所在年月
+  // 回到今天：日历切回当前月份，并把列表筛选到今天（含今天的待办）
   const goToday = () => {
     const n = new Date()
     setViewDate(new Date(n.getFullYear(), n.getMonth(), 1))
+    store.cancelDraft()
+    store.selectDate(fmtYmd(n.getFullYear(), n.getMonth() + 1, n.getDate()))
   }
 
   return (

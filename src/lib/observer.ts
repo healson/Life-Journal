@@ -15,7 +15,7 @@ export function useStore() {
 type StoreMethodKey = "lock" | "selectDate" |
   "selectEntry" | "createEntry" | "updateEntry" | "deleteEntry" | "togglePin" |
   "lockEntry" | "unlockEntry" | "relockEntry" |
-  "startDraft" | "updateDraft" | "commitDraft" |
+  "startDraft" | "updateDraft" | "commitDraft" | "cancelDraft" |
   "setFilter" | "setSearch" | "openConvertDrawer" | "closeConvertDrawer" |
   "addTodos" | "updateTodo" | "deleteTodo"
 
@@ -33,7 +33,7 @@ const patch = (key: StoreMethodKey) => {
   "selectDate",
   "selectEntry", "createEntry", "updateEntry", "deleteEntry", "togglePin",
   "lockEntry", "unlockEntry", "relockEntry",
-  "startDraft", "updateDraft", "commitDraft",
+  "startDraft", "updateDraft", "commitDraft", "cancelDraft",
   "setFilter", "setSearch", "openConvertDrawer", "closeConvertDrawer",
   "addTodos", "updateTodo", "deleteTodo",
 ].forEach((k) => patch(k as StoreMethodKey))
