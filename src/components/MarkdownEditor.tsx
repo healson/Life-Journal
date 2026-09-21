@@ -176,7 +176,7 @@ function EntryMetaBar({ entry, onSave }: {
   const currentDate = entry.date ?? entry.createdAt.slice(0, 10)
 
   return (
-    <div className="px-8 pt-6 pb-4 border-b border-border-light">
+    <div className="px-8 pt-6 pb-4 border-b border-border-light max-md:pl-28 max-md:pt-14">
       {/* 标题 */}
       <input
         type="text"

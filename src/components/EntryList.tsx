@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import { Search, X, History, Calendar, CheckSquare, Menu, PenLine, ListTodo } from "lucide-react"
+import { Search, X, History, Calendar, CheckSquare, Menu } from "lucide-react"
 import { store } from "../store"
 import { useStore } from "../lib/observer"
 import { EntryCard } from "./EntryCard"
@@ -151,7 +151,7 @@ export function EntryList({
       </div>
 
       {/* 列表内容 */}
-      <div className="flex-1 overflow-y-auto p-3 pb-20 space-y-4">
+      <div className="flex-1 overflow-y-auto p-3 pb-32 space-y-4">
         {allFiltered.length === 0 && !hasDateFilter && (
           <div className="text-center py-12 text-text-muted text-sm">
             {state.searchQuery ? "没搜到匹配的日记" : "还没有日记 ✨"}
@@ -226,23 +226,21 @@ export function EntryList({
         )}
       </div>
 
-      {/* 浮动操作按钮：底部居中 “记趣”（新建日记）+ “待办”（新建待办）—— 与编辑区「完成/转待办」同款 UI，统一强调色 */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 z-20">
-        <button
-          onClick={() => store.createEntry({ entryType: "daily" })}
-          className="flex items-center gap-2 px-5 py-3 rounded-full bg-accent text-white text-base font-medium shadow-popover hover:bg-accent-light active:scale-95 transition-all"
-          title="新建日记"
-        >
-          <PenLine className="w-5 h-5" />
-          记趣
-        </button>
+      {/* 浮动操作按钮：底部居中 “待办”（新建待办）+ “记趣”（新建日记）—— 与编辑区「完成/转待办」同款 UI，统一强调色 */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 z-20 whitespace-nowrap">
         <button
           onClick={() => onNewTodo?.()}
-          className="flex items-center gap-2 px-5 py-3 rounded-full bg-accent text-white text-base font-medium shadow-popover hover:bg-accent-light active:scale-95 transition-all"
+          className="flex items-center gap-2 px-5 py-3 rounded-full bg-accent text-white text-base font-medium shadow-popover hover:bg-accent-light active:scale-95 transition-all whitespace-nowrap"
           title="新建待办"
         >
-          <ListTodo className="w-5 h-5" />
           待办
+        </button>
+        <button
+          onClick={() => store.createEntry({ entryType: "daily" })}
+          className="flex items-center gap-2 px-5 py-3 rounded-full bg-accent text-white text-base font-medium shadow-popover hover:bg-accent-light active:scale-95 transition-all whitespace-nowrap"
+          title="新建日记"
+        >
+          记趣
         </button>
       </div>
     </div>

@@ -43,24 +43,55 @@ export default function App() {
     store.startDraft(`${n.getFullYear()}-${pad(n.getMonth() + 1)}-${pad(n.getDate())}`)
   }, [isMobile, state.isUnlocked, state.ready])
 
+  // 移动端：列表页左缘右滑「二次确认退出」的提示状态
+  const [exitHint, setExitHint] = useState(false)
+  const exitHintTimer = useRef<number | null>(null)
+
   // 全面屏手势（仅移动端）：
-  // 右缘左滑 → 关闭抽屉；左缘右滑 → 抽屉开着先关，否则有选中（日记/草稿/锁定页）返回列表，无选中则打开抽屉
+  // - 抽屉开着：任意滑动先关抽屉
+  // - 编辑区左缘右滑 → 返回列表
+  // - 列表页右缘左滑 → 切回编辑区（今日空日记草稿）
+  // - 列表页左缘右滑 → 第一次提示，3 秒内再滑一次退出登录
+  // - 待办页左缘右滑 → 打开抽屉
   useEdgeSwipe(
     (edge) => {
-      if (edge === "right") {
-        setDrawerOpen(false)
-        return
-      }
       if (drawerOpen) {
         setDrawerOpen(false)
         return
       }
-      if (state.selectedEntryId) {
-        store.selectEntry(null)
-        store.cancelDraft()
+      if (view === "todos") {
+        if (edge === "left") setDrawerOpen(true)
         return
       }
-      setDrawerOpen(true)
+      if (edge === "right") {
+        // 列表页右缘左滑 → 切回编辑区
+        if (!editing) {
+          const n = new Date()
+          const pad = (x: number) => String(x).padStart(2, "0")
+          store.selectEntry(null)
+          store.startDraft(`${n.getFullYear()}-${pad(n.getMonth() + 1)}-${pad(n.getDate())}`)
+        }
+        return
+      }
+      // edge === "left"：左缘右滑
+      if (editing) {
+        goBackToList()
+        return
+      }
+      // 列表页：二次确认退出登录
+      if (exitHint) {
+        if (exitHintTimer.current) window.clearTimeout(exitHintTimer.current)
+        exitHintTimer.current = null
+        setExitHint(false)
+        store.lock()
+        return
+      }
+      setExitHint(true)
+      if (exitHintTimer.current) window.clearTimeout(exitHintTimer.current)
+      exitHintTimer.current = window.setTimeout(() => {
+        setExitHint(false)
+        exitHintTimer.current = null
+      }, 3000)
     },
     isMobile,
   )
@@ -97,6 +128,14 @@ export default function App() {
 
   return (
     <div className="h-full flex bg-background overflow-hidden">
+      {/* 移动端手势退出提示（列表页左缘右滑第一次触发） */}
+      {isMobile && exitHint && (
+        <div className="fixed top-8 inset-x-0 flex justify-center z-[60] pointer-events-none">
+          <div className="px-4 py-2 rounded-full bg-black/70 text-white text-xs shadow-lg">
+            再向右滑一次退出登录
+          </div>
+        </div>
+      )}
       {isMobile ? (
         <>
           {/* 侧栏抽屉遮罩 */}
@@ -192,7 +231,7 @@ export default function App() {
                   {editing && (
                     <button
                       onClick={() => store.openConvertDrawer()}
-                      className="fixed bottom-6 right-6 flex items-center gap-2 px-4 py-2.5 rounded-full bg-accent text-white text-sm font-medium shadow-popover hover:bg-accent-light active:scale-95 transition-all z-30"
+                      className="fixed bottom-16 right-6 flex items-center gap-2 px-4 py-2.5 rounded-full bg-accent text-white text-sm font-medium shadow-popover hover:bg-accent-light active:scale-95 transition-all z-30"
                     >
                       <Wand2 className="w-4 h-4" />
                       转待办
