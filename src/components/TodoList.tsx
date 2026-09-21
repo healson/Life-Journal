@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react"
-import { Check, Circle, Calendar, Bell, Flag, Link2, Plus, Trash2, Pencil } from "lucide-react"
+import { Check, Circle, Calendar, Bell, Flag, Link2, Plus, Trash2, Pencil, Menu } from "lucide-react"
 import { store } from "../store"
 import { useStore } from "../lib/observer"
 import { confirmDialog } from "./ConfirmDialog"
@@ -9,7 +9,7 @@ import type { Todo } from "../types"
 
 type Filter = "pending" | "in_progress" | "done" | "all"
 
-export function TodoList() {
+export function TodoList({ onMenuClick }: { onMenuClick?: () => void }) {
   const state = useStore()
   const [filter, setFilter] = useState<Filter>("all")
   const [editing, setEditing] = useState<Todo | null>(null)
@@ -51,6 +51,15 @@ export function TodoList() {
     <div className="flex-1 flex flex-col">
       {/* 头部筛选 */}
       <div className="flex items-center gap-2 px-8 pt-6 pb-4 border-b border-border-light">
+        {onMenuClick && (
+          <button
+            onClick={onMenuClick}
+            className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-text-muted hover:text-primary hover:bg-primary/10 transition-colors"
+            title="打开侧栏"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
         <h1 className="text-2xl font-bold text-text">待办列表</h1>
         <div className="flex-1" />
         <button

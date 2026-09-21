@@ -199,8 +199,13 @@ export const store = {
   // ── 日历 ──
   selectDate(dateStr: string | null) {
     state.selectedDate = dateStr
-    // 清空日期过滤时，一并取消由日历产生的草稿（回到不受日历影响的完整列表）
-    if (dateStr === null) this.cancelDraft()
+    if (dateStr === null) {
+      // 清空日期过滤时，一并取消由日历产生的草稿（回到不受日历影响的完整列表）
+      this.cancelDraft()
+    } else {
+      // 点日历日期 = 独立按日期筛选：清除标签/关键词搜索，避免两者叠加
+      state.searchQuery = ""
+    }
   },
 
   // ── Entries ──

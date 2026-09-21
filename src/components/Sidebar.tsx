@@ -146,7 +146,12 @@ export function Sidebar({ onViewChange }: Props) {
               return (
                 <button
                   key={t.tag}
-                  onClick={() => { store.setSearch(t.tag); onViewChange("entries") }}
+                  onClick={() => {
+                    store.selectDate(null) // 标签筛选独立于日期：先清日期过滤与草稿
+                    store.setFilter("all") // 标签筛选独立于分类：清除分类筛选
+                    store.setSearch(t.tag)
+                    onViewChange("entries")
+                  }}
                   className="px-2 py-0.5 rounded-md bg-surface-hover hover:bg-primary/15 hover:text-primary transition-colors text-text-secondary"
                   style={{ fontSize: `${size}px`, opacity }}
                   title={`${t.tag} · ${t.count} 条`}

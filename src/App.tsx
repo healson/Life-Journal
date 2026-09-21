@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Sidebar } from "./components/Sidebar"
 import { EntryList } from "./components/EntryList"
 import { MarkdownEditor } from "./components/MarkdownEditor"
@@ -6,19 +6,28 @@ import { TodoList } from "./components/TodoList"
 import { ConvertDrawer } from "./components/ConvertDrawer"
 import { LoginScreen } from "./components/LoginScreen"
 import { LockedEntryView } from "./components/LockedEntryView"
-import { ResizablePane } from "./components/ResizablePane"
 import { EnvelopeLayer } from "./components/EnvelopeLayer"
 import { ConfirmHost } from "./components/ConfirmDialog"
 import { PasswordHost } from "./components/PasswordDialog"
 import { store, DRAFT_ID } from "./store"
 import { useStore } from "./lib/observer"
-import { Wand2 } from "lucide-react"
+import { useIsMobile } from "./lib/useIsMobile"
+import { cn } from "./lib/utils"
+import { ChevronLeft, Wand2 } from "lucide-react"
 
 type View = "entries" | "todos"
 
 export default function App() {
   const [view, setView] = useState<View>("entries")
   const state = useStore()
+  const isMobile = useIsMobile()
+  // 移动端：侧栏抽屉开关
+  const [drawerOpen, setDrawerOpen] = useState(false)
+
+  // 移动端：从抽屉选了日期/日记后自动收起抽屉
+  useEffect(() => {
+    if (state.selectedDate || state.selectedEntryId) setDrawerOpen(false)
+  }, [state.selectedDate, state.selectedEntryId])
 
   // 未登录时显示登录页
   if (!state.isUnlocked) {
@@ -39,34 +48,53 @@ export default function App() {
   const lockedHidden =
     !!selectedEntry?.isLocked && !state.sessionUnlockedIds.includes(selectedEntry.id)
 
+  const handleViewChange = (v: View) => {
+    setView(v)
+    setDrawerOpen(false)
+  }
+
+  // 移动端编辑页返回列表
+  const goBackToList = () => {
+    store.selectEntry(null)
+    store.cancelDraft()
+  }
+
   return (
     <div className="h-full flex bg-background overflow-hidden">
-      {/* 左侧边栏（可拖动宽度）——正好容纳 18px 品牌标题 */}
-      <ResizablePane initialWidth={280} minWidth={220} maxWidth={420} side="right">
-        <Sidebar onViewChange={setView} />
-      </ResizablePane>
+      {isMobile ? (
+        <>
+          {/* 侧栏抽屉遮罩 */}
+          {drawerOpen && (
+            <div
+              className="fixed inset-0 bg-black/30 z-40"
+              onClick={() => setDrawerOpen(false)}
+            />
+          )}
 
-      {/* 中间栏 + 右侧编辑区（整体再套一层） */}
-      <main className="flex-1 flex min-w-0 relative">
-        {view === "entries" ? (
-          <>
-            {/* 中间：日记列表（可拖动宽度） */}
-            <ResizablePane initialWidth={320} minWidth={240} maxWidth={480} side="right">
-              <EntryList onNewTodo={() => { store.openAddTodo(); setView("todos") }} />
-            </ResizablePane>
+          {/* 侧栏抽屉：Sidebar 原样复用，从左侧滑入 */}
+          <div
+            className={cn(
+              "fixed left-0 top-0 h-full w-[300px] max-w-[85vw] z-50 shadow-2xl transition-transform duration-300",
+              drawerOpen ? "translate-x-0" : "-translate-x-full",
+            )}
+          >
+            <Sidebar onViewChange={handleViewChange} />
+          </div>
 
-            {/* 右侧：编辑器 / 锁定查看页 */}
-            <div className="flex-1 min-w-0 min-h-0 flex flex-col relative">
-              {lockedHidden && selectedEntry ? (
+          {/* 主体：列表页 ⇄ 编辑页互斥 */}
+          <main className="h-full flex-1 min-w-0">
+            {view === "todos" ? (
+              <TodoList onMenuClick={() => setDrawerOpen(true)} />
+            ) : lockedHidden && selectedEntry ? (
+              <div className="relative h-full">
+                <MobileBackButton onClick={goBackToList} />
                 <LockedEntryView entry={selectedEntry} />
-              ) : editing ? (
+              </div>
+            ) : editing ? (
+              <div className="relative h-full">
+                <MobileBackButton onClick={goBackToList} />
                 <MarkdownEditor entryId={state.selectedEntryId!} />
-              ) : (
-                <EmptyState onNew={() => store.createEntry({ entryType: "daily" })} />
-              )}
-
-              {/* 浮动 "转待办" 按钮 */}
-              {editing && (
+                {/* 浮动 "转待办" 按钮 */}
                 <button
                   onClick={() => store.openConvertDrawer()}
                   className="fixed bottom-6 right-6 flex items-center gap-2 px-4 py-2.5 rounded-full bg-accent text-white text-sm font-medium shadow-popover hover:bg-accent-light active:scale-95 transition-all z-30"
@@ -74,13 +102,62 @@ export default function App() {
                   <Wand2 className="w-4 h-4" />
                   转待办
                 </button>
-              )}
-            </div>
-          </>
-        ) : (
-          <TodoList />
-        )}
-      </main>
+              </div>
+            ) : (
+              <EntryList
+                onNewTodo={() => {
+                  store.openAddTodo()
+                  setView("todos")
+                }}
+                onMenuClick={() => setDrawerOpen(true)}
+              />
+            )}
+          </main>
+        </>
+      ) : (
+        <>
+          {/* 左侧边栏（固定宽度 280px） */}
+          <div className="w-[280px] flex-shrink-0">
+            <Sidebar onViewChange={setView} />
+          </div>
+
+          {/* 中间栏 + 右侧编辑区（整体再套一层） */}
+          <main className="flex-1 flex min-w-0 relative">
+            {view === "entries" ? (
+              <>
+                {/* 中间：日记列表（固定宽度 320px） */}
+                <div className="w-[320px] flex-shrink-0">
+                  <EntryList onNewTodo={() => { store.openAddTodo(); setView("todos") }} />
+                </div>
+
+                {/* 右侧：编辑器 / 锁定查看页 */}
+                <div className="flex-1 min-w-0 min-h-0 flex flex-col relative">
+                  {lockedHidden && selectedEntry ? (
+                    <LockedEntryView entry={selectedEntry} />
+                  ) : editing ? (
+                    <MarkdownEditor entryId={state.selectedEntryId!} />
+                  ) : (
+                    <EmptyState onNew={() => store.createEntry({ entryType: "daily" })} />
+                  )}
+
+                  {/* 浮动 "转待办" 按钮 */}
+                  {editing && (
+                    <button
+                      onClick={() => store.openConvertDrawer()}
+                      className="fixed bottom-6 right-6 flex items-center gap-2 px-4 py-2.5 rounded-full bg-accent text-white text-sm font-medium shadow-popover hover:bg-accent-light active:scale-95 transition-all z-30"
+                    >
+                      <Wand2 className="w-4 h-4" />
+                      转待办
+                    </button>
+                  )}
+                </div>
+              </>
+            ) : (
+              <TodoList />
+            )}
+          </main>
+        </>
+      )}
 
       {/* 转待办抽屉 */}
       <ConvertDrawer />
@@ -94,6 +171,19 @@ export default function App() {
       {/* 全局密码输入框 */}
       <PasswordHost />
     </div>
+  )
+}
+
+/** 移动端编辑页顶部的返回按钮 */
+function MobileBackButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="absolute top-3 left-3 z-40 flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-surface/90 backdrop-blur border border-border-light text-text-secondary hover:text-text shadow-sm transition-colors"
+    >
+      <ChevronLeft className="w-4 h-4" />
+      <span className="text-xs">返回</span>
+    </button>
   )
 }
 

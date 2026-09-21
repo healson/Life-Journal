@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import { Search, X, History, Calendar, CheckSquare } from "lucide-react"
+import { Search, X, History, Calendar, CheckSquare, Menu } from "lucide-react"
 import { store } from "../store"
 import { useStore } from "../lib/observer"
 import { EntryCard } from "./EntryCard"
@@ -17,7 +17,14 @@ function entryDateObj(e: JournalEntry): Date {
   return new Date(y, m - 1, day)
 }
 
-export function EntryList({ onNewTodo }: { onNewTodo?: () => void }) {
+export function EntryList({
+  onNewTodo,
+  onMenuClick,
+}: {
+  onNewTodo?: () => void
+  /** 移动端：点击打开侧栏抽屉 */
+  onMenuClick?: () => void
+}) {
   const state = useStore()
 
   const selectedDate = state.selectedDate // "YYYY-MM-DD"
@@ -87,25 +94,36 @@ export function EntryList({ onNewTodo }: { onNewTodo?: () => void }) {
     <div className="h-full border-r border-border bg-background/60 backdrop-blur-sm flex flex-col relative">
       {/* 顶部：搜索（去掉新建按钮，改浮动） */}
       <div className="p-4 border-b border-border-light space-y-3 flex-shrink-0">
-        <div className="relative min-w-0">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-          <input
-            type="text"
-            placeholder="搜索日记…"
-            value={state.searchQuery}
-            onChange={(e) => store.setSearch(e.target.value)}
-            className="w-full pl-9 pr-9 py-2 rounded-lg bg-surface border border-border-light text-sm outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10 transition-all"
-          />
-          {state.searchQuery && (
+        <div className="flex items-center gap-2">
+          {onMenuClick && (
             <button
-              type="button"
-              onClick={() => store.setSearch("")}
-              title="清除搜索"
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full text-text-muted hover:text-text hover:bg-surface-hover transition-colors"
+              onClick={onMenuClick}
+              className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-text-muted hover:text-primary hover:bg-primary/10 transition-colors"
+              title="打开侧栏"
             >
-              <X className="w-3.5 h-3.5" />
+              <Menu className="w-5 h-5" />
             </button>
           )}
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+            <input
+              type="text"
+              placeholder="搜索日记…"
+              value={state.searchQuery}
+              onChange={(e) => store.setSearch(e.target.value)}
+              className="w-full pl-9 pr-9 py-2 rounded-lg bg-surface border border-border-light text-sm outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10 transition-all"
+            />
+            {state.searchQuery && (
+              <button
+                type="button"
+                onClick={() => store.setSearch("")}
+                title="清除搜索"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full text-text-muted hover:text-text hover:bg-surface-hover transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 状态条 */}
