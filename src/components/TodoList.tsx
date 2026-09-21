@@ -215,7 +215,7 @@ function TodoItem({ todo, onEdit }: { todo: Todo; onEdit: (t: Todo) => void }) {
       </div>
 
       {/* 操作 */}
-      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+      <div className="flex items-center gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
         <button
           onClick={() => onEdit(todo)}
           title="编辑待办"
@@ -269,7 +269,7 @@ function TodoDialog({ initial, onClose }: { initial?: Todo | null; onClose: () =
   return (
     <>
       <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] bg-surface rounded-xl shadow-popover z-50 animate-fade-in-up p-6 space-y-4">
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-4rem)] overflow-y-auto bg-surface rounded-xl shadow-popover z-50 animate-fade-in-up p-6 space-y-4">
         <h3 className="text-lg font-semibold">{initial ? "编辑待办" : "新建待办"}</h3>
 
         <input

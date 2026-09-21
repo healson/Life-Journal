@@ -111,6 +111,8 @@ export default function App() {
   // 草稿态：selectedEntryId 为 DRAFT_ID 时，右侧编辑器绑定 state.draft
   const isDrafting = state.selectedEntryId === DRAFT_ID && !!state.draft
   const editing = selectedEntry || isDrafting
+  // 搜索状态下进入日记：编辑器锁定只读（正文关键词高亮，可点「编辑」退出）
+  const searchActive = !!state.searchQuery?.trim()
   // 已锁定且本会话尚未输入密码的日记：右侧显示密码查看页
   const lockedHidden =
     !!selectedEntry?.isLocked && !state.sessionUnlockedIds.includes(selectedEntry.id)
@@ -168,27 +170,29 @@ export default function App() {
             ) : editing ? (
               <div className="relative h-full">
                 <MobileBackButton onClick={goBackToList} />
-                <MarkdownEditor entryId={state.selectedEntryId!} />
-                {/* 浮动按钮组：完成（保存并返回列表）+ 转待办；上移避免遮挡底部状态栏 */}
-                <div className="fixed bottom-14 left-1/2 -translate-x-1/2 flex items-center gap-2 z-30">
-                  <button
-                    onClick={() => {
-                      store.commitDraft()
-                      goBackToList()
-                    }}
-                    className="flex shrink-0 whitespace-nowrap items-center gap-2 px-4 py-2.5 rounded-full bg-accent text-white text-sm font-medium shadow-popover hover:bg-accent-light active:scale-95 transition-all"
-                  >
-                    <Check className="w-4 h-4" />
-                    完成
-                  </button>
-                  <button
-                    onClick={() => store.openConvertDrawer()}
-                    className="flex shrink-0 whitespace-nowrap items-center gap-2 px-4 py-2.5 rounded-full bg-accent text-white text-sm font-medium shadow-popover hover:bg-accent-light active:scale-95 transition-all"
-                  >
-                    <Wand2 className="w-4 h-4" />
-                    转待办
-                  </button>
-                </div>
+                <MarkdownEditor entryId={state.selectedEntryId!} readOnly={searchActive} />
+                {/* 浮动按钮组：完成（保存并返回列表）+ 转待办；搜索只读时由只读视图提供「编辑」按钮 */}
+                {editing && !searchActive && (
+                  <div className="fixed bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-2 z-30">
+                    <button
+                      onClick={() => {
+                        store.commitDraft()
+                        goBackToList()
+                      }}
+                      className="flex shrink-0 whitespace-nowrap items-center gap-2 px-4 py-2.5 rounded-full bg-accent text-white text-sm font-medium shadow-popover hover:bg-accent-light active:scale-95 transition-all"
+                    >
+                      <Check className="w-4 h-4" />
+                      完成
+                    </button>
+                    <button
+                      onClick={() => store.openConvertDrawer()}
+                      className="flex shrink-0 whitespace-nowrap items-center gap-2 px-4 py-2.5 rounded-full bg-accent text-white text-sm font-medium shadow-popover hover:bg-accent-light active:scale-95 transition-all"
+                    >
+                      <Wand2 className="w-4 h-4" />
+                      转待办
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <EntryList
@@ -222,13 +226,13 @@ export default function App() {
                   {lockedHidden && selectedEntry ? (
                     <LockedEntryView entry={selectedEntry} />
                   ) : editing ? (
-                    <MarkdownEditor entryId={state.selectedEntryId!} />
+                    <MarkdownEditor entryId={state.selectedEntryId!} readOnly={searchActive} />
                   ) : (
                     <EmptyState onNew={() => store.createEntry({ entryType: "daily" })} />
                   )}
 
-                  {/* 浮动 "转待办" 按钮 */}
-                  {editing && (
+                  {/* 浮动 "转待办" 按钮（搜索只读时由只读视图提供「编辑」按钮） */}
+                  {editing && !searchActive && (
                     <button
                       onClick={() => store.openConvertDrawer()}
                       className="fixed bottom-16 right-6 flex items-center gap-2 px-4 py-2.5 rounded-full bg-accent text-white text-sm font-medium shadow-popover hover:bg-accent-light active:scale-95 transition-all z-30"

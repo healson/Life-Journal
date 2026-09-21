@@ -9,6 +9,7 @@ import { cn } from "../lib/utils"
 import { store } from "../store"
 import { emitChange } from "../lib/events"
 import { confirmDialog } from "./ConfirmDialog"
+import pkg from "../../package.json"
 import {
   apiChangePassword, apiClearAll, apiCreateUser, apiDeleteUser, apiExportData,
   apiImportData, apiListUsers, apiResetPassword, apiUpdateUsername, type UserDto,
@@ -315,7 +316,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
 
             <div className="mt-5 pt-4 border-t border-border-light flex items-center justify-between text-[11px] text-text-muted">
               <span>人生记趣录 · Life Journal</span>
-              <span>v0.3.0</span>
+              <span>v{pkg.version}</span>
             </div>
           </div>
         )}

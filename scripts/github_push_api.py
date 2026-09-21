@@ -72,20 +72,18 @@ def main():
     base = ref["object"]["sha"]
     print("base : %s (%s)" % (base[:7], base_ref))
 
-    # 校验 base 与 target 都在本地
-    subprocess.check_call(["git", "cat-file", "-e", base + "^{commit}"])
+    # 2. 远端 base commit 的 tree（直接从 API 获取，兼容远端 base 不在本地对象库的情况）
+    base_commit = api("/repos/%s/git/commits/%s" % (slug, base))
+    base_tree = base_commit["tree"]["sha"]
+    subprocess.check_call(["git", "cat-file", "-e", base_tree + "^{tree}"])
     subprocess.check_call(["git", "cat-file", "-e", target + "^{commit}"])
     if base == target:
         print("already up-to-date: %s" % base[:7])
         return
-
-    # 2. base 的树
-    meta = sh("git", "cat-file", "-p", base)
-    base_tree = next(l.split()[1] for l in meta.splitlines() if l.startswith("tree "))
     print("tree : %s" % base_tree[:7])
 
     # 3. 计算变更文件并上传 blob / 建树条目
-    changes = sh("git", "diff-tree", "-r", "--no-commit-id", "--name-status", base, target).splitlines()
+    changes = sh("git", "diff-tree", "-r", "--no-commit-id", "--name-status", base_tree, target).splitlines()
     entries = []
     for line in changes:
         parts = line.split("\t")

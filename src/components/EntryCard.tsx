@@ -88,8 +88,13 @@ export function EntryCard({ entry, selected }: Props) {
             </h3>
           </div>
 
-          {/* 预览 —— 锁定隐藏；搜索时显示关键词附近片段，单行省略；关键词高亮 */}
-          <p className="mt-1 text-xs text-text-secondary whitespace-nowrap overflow-hidden text-ellipsis leading-relaxed">
+          {/* 预览 —— 锁定隐藏；搜索时显示关键词附近片段（最多 3 行），关键词高亮；非搜索单行省略 */}
+          <p
+            className={cn(
+              "mt-1 text-xs text-text-secondary leading-relaxed",
+              keyword ? "line-clamp-3" : "whitespace-nowrap overflow-hidden text-ellipsis",
+            )}
+          >
             {lockedHidden ? "🔒 已锁定，输入密码查看" : highlight(snippet, keyword)}
           </p>
 
@@ -127,7 +132,7 @@ export function EntryCard({ entry, selected }: Props) {
                 })
                 if (ok) store.deleteEntry(entry.id)
               }}
-              className="opacity-0 group-hover:opacity-100 text-text-muted hover:text-danger transition-all flex-shrink-0"
+              className="opacity-100 md:opacity-0 md:group-hover:opacity-100 text-text-muted hover:text-danger transition-all flex-shrink-0"
               title="删除"
             >
               <Trash2 className="w-3.5 h-3.5" />
