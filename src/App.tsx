@@ -170,7 +170,7 @@ export default function App() {
                 <MobileBackButton onClick={goBackToList} />
                 <MarkdownEditor entryId={state.selectedEntryId!} />
                 {/* 浮动按钮组：完成（保存并返回列表）+ 转待办；上移避免遮挡底部状态栏 */}
-                <div className="fixed bottom-24 right-6 flex items-center gap-2 z-30">
+                <div className="fixed bottom-14 right-6 flex items-center gap-2 z-30">
                   <button
                     onClick={() => {
                       store.commitDraft()

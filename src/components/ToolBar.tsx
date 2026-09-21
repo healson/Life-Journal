@@ -199,7 +199,7 @@ export function ToolBar({ editor, onSetLink, entryId, isLocked = false }: Props)
   const Divider = () => <div className="w-px h-5 bg-border mx-1" />
 
   return (
-    <div className="sticky top-0 z-10 px-4 py-2 border-b border-border-light bg-surface/95 backdrop-blur flex items-center gap-0.5 flex-wrap">
+    <div className="sticky top-0 z-10 px-4 py-2 border-b border-border-light bg-surface/95 backdrop-blur flex items-center gap-0.5 flex-wrap max-md:flex-nowrap max-md:overflow-x-auto max-md:[-ms-overflow-style:none] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden">
       {/* 拖拽提示 */}
       <span className="w-6 h-8 flex items-center justify-center text-text-muted/40">
         <GripVertical className="w-4 h-4" />

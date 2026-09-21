@@ -132,7 +132,7 @@ export function MarkdownEditor({ entryId }: Props) {
   )
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col bg-surface" onBlur={handleBlur}>
+    <div className="h-full flex-1 min-h-0 flex flex-col bg-surface" onBlur={handleBlur}>
       {/* 编辑器区域 */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto">
@@ -176,7 +176,7 @@ function EntryMetaBar({ entry, onSave }: {
   const currentDate = entry.date ?? entry.createdAt.slice(0, 10)
 
   return (
-    <div className="px-8 pt-6 pb-4 border-b border-border-light max-md:pl-28 max-md:pt-14">
+    <div className="px-8 pt-6 pb-4 border-b border-border-light max-md:pl-28">
       {/* 标题 */}
       <input
         type="text"
@@ -210,26 +210,29 @@ function EntryMetaBar({ entry, onSave }: {
           ))}
         </div>
 
-        {/* 标签（收缩 + 内部横向滚动） */}
-        <div className="flex-1 min-w-0 flex items-center gap-1.5">
-          <span className="text-xs font-medium text-text-muted flex-shrink-0">标签</span>
-          <div className="overflow-x-auto no-scrollbar min-w-0">
-            <TagInput
-              tags={entry.tags}
-              onChange={(tags) => onSave({ tags })}
-            />
+        {/* 标签 + 置顶 —— 移动端整体换行到心情下一行；桌面端与日期/心情同行 */}
+        <div className="flex items-center gap-x-3 w-full md:w-auto md:flex-1 md:min-w-0">
+          {/* 标签（收缩 + 内部横向滚动） */}
+          <div className="flex-1 min-w-0 flex items-center gap-1.5">
+            <span className="text-xs font-medium text-text-muted flex-shrink-0">标签</span>
+            <div className="overflow-x-auto no-scrollbar min-w-0">
+              <TagInput
+                tags={entry.tags}
+                onChange={(tags) => onSave({ tags })}
+              />
+            </div>
           </div>
-        </div>
 
-        {/* 置顶 */}
-        <button
-          onClick={() => store.togglePin(entry.id)}
-          className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-            entry.isPinned ? "bg-accent/20 text-accent" : "bg-surface-hover text-text-secondary hover:text-text"
-          }`}
-        >
-          {entry.isPinned ? "📌 已置顶" : "📌 置顶"}
-        </button>
+          {/* 置顶 */}
+          <button
+            onClick={() => store.togglePin(entry.id)}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              entry.isPinned ? "bg-accent/20 text-accent" : "bg-surface-hover text-text-secondary hover:text-text"
+            }`}
+          >
+            {entry.isPinned ? "📌 已置顶" : "📌 置顶"}
+          </button>
+        </div>
       </div>
     </div>
   )
