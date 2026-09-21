@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Sidebar } from "./components/Sidebar"
 import { EntryList } from "./components/EntryList"
 import { MarkdownEditor } from "./components/MarkdownEditor"
@@ -12,8 +12,9 @@ import { PasswordHost } from "./components/PasswordDialog"
 import { store, DRAFT_ID } from "./store"
 import { useStore } from "./lib/observer"
 import { useIsMobile } from "./lib/useIsMobile"
+import { useEdgeSwipe } from "./lib/useEdgeSwipe"
 import { cn } from "./lib/utils"
-import { ChevronLeft, Wand2 } from "lucide-react"
+import { ChevronLeft, Wand2, Check } from "lucide-react"
 
 type View = "entries" | "todos"
 
@@ -28,6 +29,41 @@ export default function App() {
   useEffect(() => {
     if (state.selectedDate || state.selectedEntryId) setDrawerOpen(false)
   }, [state.selectedDate, state.selectedEntryId])
+
+  // 移动端：登录后默认进入「当前日期的空日记」草稿（整个会话只触发一次，返回列表后不再自动跳转）。
+  // 等待数据加载完成（booting=false）再建立草稿，避免被 loadData 自动选中的最近日记抢占。
+  const autoStartedDraft = useRef(false)
+  useEffect(() => {
+    if (!isMobile || !state.isUnlocked || autoStartedDraft.current) return
+    if (!state.ready) return
+    autoStartedDraft.current = true
+    const n = new Date()
+    const pad = (x: number) => String(x).padStart(2, "0")
+    store.selectEntry(null)
+    store.startDraft(`${n.getFullYear()}-${pad(n.getMonth() + 1)}-${pad(n.getDate())}`)
+  }, [isMobile, state.isUnlocked, state.ready])
+
+  // 全面屏手势（仅移动端）：
+  // 右缘左滑 → 关闭抽屉；左缘右滑 → 抽屉开着先关，否则有选中（日记/草稿/锁定页）返回列表，无选中则打开抽屉
+  useEdgeSwipe(
+    (edge) => {
+      if (edge === "right") {
+        setDrawerOpen(false)
+        return
+      }
+      if (drawerOpen) {
+        setDrawerOpen(false)
+        return
+      }
+      if (state.selectedEntryId) {
+        store.selectEntry(null)
+        store.cancelDraft()
+        return
+      }
+      setDrawerOpen(true)
+    },
+    isMobile,
+  )
 
   // 未登录时显示登录页
   if (!state.isUnlocked) {
@@ -94,14 +130,26 @@ export default function App() {
               <div className="relative h-full">
                 <MobileBackButton onClick={goBackToList} />
                 <MarkdownEditor entryId={state.selectedEntryId!} />
-                {/* 浮动 "转待办" 按钮 */}
-                <button
-                  onClick={() => store.openConvertDrawer()}
-                  className="fixed bottom-6 right-6 flex items-center gap-2 px-4 py-2.5 rounded-full bg-accent text-white text-sm font-medium shadow-popover hover:bg-accent-light active:scale-95 transition-all z-30"
-                >
-                  <Wand2 className="w-4 h-4" />
-                  转待办
-                </button>
+                {/* 浮动按钮组：完成（保存并返回列表）+ 转待办；上移避免遮挡底部状态栏 */}
+                <div className="fixed bottom-24 right-6 flex items-center gap-2 z-30">
+                  <button
+                    onClick={() => {
+                      store.commitDraft()
+                      goBackToList()
+                    }}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-accent text-white text-sm font-medium shadow-popover hover:bg-accent-light active:scale-95 transition-all"
+                  >
+                    <Check className="w-4 h-4" />
+                    完成
+                  </button>
+                  <button
+                    onClick={() => store.openConvertDrawer()}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-accent text-white text-sm font-medium shadow-popover hover:bg-accent-light active:scale-95 transition-all"
+                  >
+                    <Wand2 className="w-4 h-4" />
+                    转待办
+                  </button>
+                </div>
               </div>
             ) : (
               <EntryList

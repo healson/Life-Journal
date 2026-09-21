@@ -186,8 +186,8 @@ function EntryMetaBar({ entry, onSave }: {
         className="w-full text-3xl font-bold bg-transparent outline-none text-text placeholder:text-text-muted/50"
       />
 
-      {/* 日期 + 心情 + 标签 + 置顶 —— 固定单行，不换行；标签区空间不足时内部横向滚动 */}
-      <div className="mt-3 flex items-center gap-x-5 whitespace-nowrap">
+      {/* 日期 + 心情 + 标签 + 置顶 —— 桌面端固定单行；移动端自动换行避免横向溢出 */}
+      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-3 whitespace-nowrap md:flex-nowrap md:gap-y-0">
         {/* 自定义日期 —— 月份改到下个月时触发信封 */}
         <DateInputWithEnvelope currentDate={currentDate} onPick={(ds) => onSave({ date: ds })} />
 

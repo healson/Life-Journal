@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import { Search, X, History, Calendar, CheckSquare, Menu } from "lucide-react"
+import { Search, X, History, Calendar, CheckSquare, Menu, PenLine, ListTodo } from "lucide-react"
 import { store } from "../store"
 import { useStore } from "../lib/observer"
 import { EntryCard } from "./EntryCard"
@@ -226,21 +226,25 @@ export function EntryList({
         )}
       </div>
 
-      {/* 浮动操作按钮：右下“记”（新建日记）+ 左下“办”（新建待办） */}
-      <button
-        onClick={() => store.createEntry({ entryType: "daily" })}
-        className="absolute bottom-5 right-5 w-12 h-12 rounded-full bg-accent hover:bg-accent-light active:scale-95 text-white shadow-lg shadow-accent/30 flex items-center justify-center transition-all z-20 text-xl font-medium"
-        title="新建日记"
-      >
-        记
-      </button>
-      <button
-        onClick={() => onNewTodo?.()}
-        className="absolute bottom-5 left-5 w-12 h-12 rounded-full bg-accent hover:bg-accent-light active:scale-95 text-white shadow-lg shadow-accent/30 flex items-center justify-center transition-all z-20 text-xl font-medium"
-        title="新建待办"
-      >
-        办
-      </button>
+      {/* 浮动操作按钮：底部居中 “记趣”（新建日记）+ “待办”（新建待办）—— 与编辑区「完成/转待办」同款 UI，统一强调色 */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 z-20">
+        <button
+          onClick={() => store.createEntry({ entryType: "daily" })}
+          className="flex items-center gap-2 px-5 py-3 rounded-full bg-accent text-white text-base font-medium shadow-popover hover:bg-accent-light active:scale-95 transition-all"
+          title="新建日记"
+        >
+          <PenLine className="w-5 h-5" />
+          记趣
+        </button>
+        <button
+          onClick={() => onNewTodo?.()}
+          className="flex items-center gap-2 px-5 py-3 rounded-full bg-accent text-white text-base font-medium shadow-popover hover:bg-accent-light active:scale-95 transition-all"
+          title="新建待办"
+        >
+          <ListTodo className="w-5 h-5" />
+          待办
+        </button>
+      </div>
     </div>
   )
 }

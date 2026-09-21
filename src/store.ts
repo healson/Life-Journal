@@ -23,6 +23,7 @@ interface State {
   showAddTodo: boolean   // “办”按钮触发的全局“新建待办”标志
   draft: JournalEntry | null
   booting: boolean       // 数据加载中
+  ready: boolean         // 数据是否已加载完成（loadData 结束）
   bootError: string | null
   sessionUnlockedIds: string[]  // 会话内已输入密码解锁的日记 id（刷新/登出后失效）
 }
@@ -40,6 +41,7 @@ const state: State = {
   showAddTodo: false,
   draft: null,
   booting: false,
+  ready: false,
   bootError: null,
   sessionUnlockedIds: [],
 }
@@ -135,6 +137,7 @@ async function loadData(fromUnlock = false) {
     state.bootError = (err as Error).message
   } finally {
     state.booting = false
+    state.ready = true
     emitChange()
   }
 }
