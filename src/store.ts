@@ -219,7 +219,7 @@ export const store = {
     const now = new Date().toISOString()
     const entry: JournalEntry = {
       id: tmpId,
-      title: data.title ?? "空白",
+      title: data.title ?? "",
       content: data.content ?? "",
       plainText: "",
       mood: data.mood,

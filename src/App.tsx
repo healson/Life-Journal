@@ -170,7 +170,7 @@ export default function App() {
                 <MobileBackButton onClick={goBackToList} />
                 <MarkdownEditor entryId={state.selectedEntryId!} />
                 {/* 浮动按钮组：完成（保存并返回列表）+ 转待办；上移避免遮挡底部状态栏 */}
-                <div className="fixed bottom-14 right-6 flex items-center gap-2 z-30">
+                <div className="fixed bottom-14 left-1/2 -translate-x-1/2 flex items-center gap-2 z-30">
                   <button
                     onClick={() => {
                       store.commitDraft()
@@ -266,7 +266,7 @@ function MobileBackButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="absolute top-3 left-3 z-40 flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-surface/90 backdrop-blur border border-border-light text-text-secondary hover:text-text shadow-sm transition-colors"
+      className="absolute top-3 right-3 z-40 flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-surface/90 backdrop-blur border border-border-light text-text-secondary hover:text-text shadow-sm transition-colors"
     >
       <ChevronLeft className="w-4 h-4" />
       <span className="text-xs">返回</span>

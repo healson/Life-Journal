@@ -176,7 +176,7 @@ function EntryMetaBar({ entry, onSave }: {
   const currentDate = entry.date ?? entry.createdAt.slice(0, 10)
 
   return (
-    <div className="px-8 pt-6 pb-4 border-b border-border-light max-md:pl-28">
+    <div className="px-8 pt-6 pb-4 border-b border-border-light max-md:px-5 max-md:pt-4">
       {/* 标题 */}
       <input
         type="text"
@@ -292,8 +292,8 @@ function EditorStatusBar({ editor, entry }: {
     <div className="flex items-center justify-between px-6 py-2 border-t border-border-light text-xs text-text-muted bg-surface/50">
       <span>上次编辑 {new Date(entry.updatedAt).toLocaleString("zh-CN")}</span>
 
-      {/* 导出：md / doc / pdf */}
-      <div className="flex items-center gap-0.5">
+      {/* 导出：md / doc / pdf（移动端隐藏） */}
+      <div className="flex items-center gap-0.5 max-md:hidden">
         <span className="mr-1">导出</span>
         <button
           onClick={() => exportMarkdown(title, markdown)}
