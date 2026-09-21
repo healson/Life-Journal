@@ -176,14 +176,14 @@ export default function App() {
                       store.commitDraft()
                       goBackToList()
                     }}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-accent text-white text-sm font-medium shadow-popover hover:bg-accent-light active:scale-95 transition-all"
+                    className="flex shrink-0 whitespace-nowrap items-center gap-2 px-4 py-2.5 rounded-full bg-accent text-white text-sm font-medium shadow-popover hover:bg-accent-light active:scale-95 transition-all"
                   >
                     <Check className="w-4 h-4" />
                     完成
                   </button>
                   <button
                     onClick={() => store.openConvertDrawer()}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-accent text-white text-sm font-medium shadow-popover hover:bg-accent-light active:scale-95 transition-all"
+                    className="flex shrink-0 whitespace-nowrap items-center gap-2 px-4 py-2.5 rounded-full bg-accent text-white text-sm font-medium shadow-popover hover:bg-accent-light active:scale-95 transition-all"
                   >
                     <Wand2 className="w-4 h-4" />
                     转待办
