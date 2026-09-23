@@ -186,10 +186,16 @@ export const store = {
     setToken(null)
   },
 
-  /** 应用启动时若已有 token，后台拉取数据 */
+  /** 应用启动时若已有 token，校验后后台拉取数据；token 失效则自动登出回登录页 */
   async init() {
     if (!state.isUnlocked || !getToken()) return
-    await this.refreshMe()
+    try {
+      await this.refreshMe()
+    } catch {
+      // token 无效 / 后端不可达：退回登录页，清空残留会话
+      this.lock()
+      return
+    }
     await loadData()
     startIdleTimer(() => this.lock(), 10)
   },
