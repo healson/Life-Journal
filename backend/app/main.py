@@ -1,12 +1,13 @@
 import os
+import re
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
+from sqlalchemy import or_, text
 
 from . import auth as auth_mod
 from .database import Base, SessionLocal, engine
-from .models import User
+from .models import JournalEntry, User
 from .routers import auth, backup, entries, todos, upload
 
 # 建表
@@ -31,6 +32,46 @@ def _ensure_columns():
 
 
 _ensure_columns()
+
+
+_TAG_RE = re.compile(r"<[^>]*>")
+_MD_RE = re.compile(r"[#*`>\-_!()\[\]]")
+_NL_RE = re.compile(r"\n+")
+
+
+def _to_plain(md: str) -> str:
+    """与前端 plainText() 一致的 Markdown → 纯文本转换。"""
+    text = _TAG_RE.sub("", md)
+    text = _MD_RE.sub("", text)
+    text = _NL_RE.sub(" ", text)
+    return text.strip()
+
+
+def _backfill_plain_text():
+    """一次性数据修复：历史日记保存时前端未写入 plain_text，启动时补算，
+    保证刷新页面后按内容关键词搜索可用。幂等，仅处理缺失的记录。"""
+    db = SessionLocal()
+    try:
+        rows = (
+            db.query(JournalEntry)
+            .filter(
+                or_(
+                    JournalEntry.plain_text == "",
+                    JournalEntry.plain_text.is_(None),
+                ),
+                JournalEntry.content != "",
+            )
+            .all()
+        )
+        for e in rows:
+            e.plain_text = _to_plain(e.content)
+        if rows:
+            db.commit()
+    finally:
+        db.close()
+
+
+_backfill_plain_text()
 
 
 def _bootstrap_admin():
