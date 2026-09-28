@@ -112,7 +112,6 @@ function plainText(md: string): string {
     .replace(/[#*`>\-_!()\[\]]/g, "")    // 再清掉常见 Markdown 语法符号
     .replace(/\n+/g, " ")
     .trim()
-    .slice(0, 200)
 }
 
 function genId() {
@@ -227,7 +226,7 @@ export const store = {
       id: tmpId,
       title: data.title ?? "",
       content: data.content ?? "",
-      plainText: "",
+      plainText: data.plainText ?? plainText(data.content ?? ""),
       mood: data.mood,
       tags: data.tags ?? [],
       entryType: data.entryType ?? "daily",
@@ -267,7 +266,7 @@ export const store = {
   updateDraft(patch: Partial<JournalEntry>) {
     if (!state.draft) return
     const updated = { ...state.draft, ...patch, updatedAt: new Date().toISOString() }
-    if (patch.content) updated.plainText = plainText(patch.content)
+    updated.plainText = plainText(patch.content ?? "")
     state.draft = updated
   },
 
@@ -297,9 +296,9 @@ export const store = {
     const idx = state.entries.findIndex((e) => e.id === id)
     if (idx < 0) return
     const updated = { ...state.entries[idx], ...patch, updatedAt: new Date().toISOString() }
-    if (patch.content) updated.plainText = plainText(patch.content)
+    updated.plainText = plainText(patch.content ?? "")
     state.entries = state.entries.map((e, i) => (i === idx ? updated : e))
-    apiUpdateEntry(id, entryPayload(patch)).catch(() => {})
+    apiUpdateEntry(id, entryPayload(updated)).catch(() => {})
   },
 
   deleteEntry(id: string) {
