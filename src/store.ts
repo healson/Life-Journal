@@ -1,6 +1,6 @@
 import type { JournalEntry, Todo } from "./types"
 import { emitChange } from "./lib/events"
-import { startIdleTimer, stopIdleTimer } from "./lib/idle"
+import { resetLastActivity, startIdleTimer, stopIdleTimer } from "./lib/idle"
 import {
   apiCompleteTodo, apiCreateEntry, apiCreateTodo, apiDeleteEntry, apiDeleteTodo,
   apiListEntries, apiListTodos, apiLockEntry, apiLogin, apiMe, apiRegister,
@@ -160,6 +160,7 @@ export const store = {
     state.isUnlocked = true
     await this.refreshMe()
     await loadData(true)
+    resetLastActivity() // 登录前无活动监听，旧时间戳可能已超时，先重置避免被秒登出
     startIdleTimer(() => this.lock(), 10)
   },
 
@@ -169,6 +170,7 @@ export const store = {
     state.isUnlocked = true
     await this.refreshMe()
     await loadData(true)
+    resetLastActivity()
     startIdleTimer(() => this.lock(), 10)
   },
 

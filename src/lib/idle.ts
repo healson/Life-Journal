@@ -21,6 +21,14 @@ function persistLastActivity() {
   safeStorage?.setItem(LAST_ACTIVITY_KEY, String(lastActivity))
 }
 
+/** 重置最后活动时间为现在。登录/注册成功后必须调用：
+ * 否则 startIdleTimer 读到的是上次登出前的旧时间戳（已超时），
+ * 会同步触发 onTimeout 把刚登录的用户立刻登出，且监听未挂上无法自救。 */
+export function resetLastActivity() {
+  lastActivity = Date.now()
+  persistLastActivity()
+}
+
 function onActivity() {
   lastActivity = Date.now()
   persistLastActivity()
