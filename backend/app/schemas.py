@@ -1,7 +1,9 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
+
+from .models import iso_utc
 
 
 # ── Auth ──
@@ -27,6 +29,10 @@ class UserOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+    @field_serializer("created_at")
+    def _ser_created(self, v: datetime):
+        return iso_utc(v)
 
 
 class ChangePasswordRequest(BaseModel):
@@ -89,6 +95,11 @@ class EntryOut(EntryBase):
 
     model_config = {"from_attributes": True}
 
+    @field_serializer("created_at", "updated_at")
+    def _ser_times(self, v: datetime):
+        # UTC 墙钟 → 带 Z 输出，前端 new Date() 才能正确换算本地时间
+        return iso_utc(v)
+
 
 class EntryLockRequest(BaseModel):
     password: str = Field(min_length=1, max_length=128)
@@ -128,9 +139,14 @@ class TodoOut(BaseModel):
     priority: int
     status: str
     due_date: Optional[str]
-    remind_at: Optional[datetime]
+    remind_at: Optional[datetime]   # 本地墙上时间，保持 naive（前端按本地解析）
     synced_to_calendar: bool
     completed_at: Optional[datetime]
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+    @field_serializer("created_at", "completed_at")
+    def _ser_times(self, v: datetime | None):
+        # UTC 墙钟 → 带 Z 输出；remind_at 不走此序列化
+        return iso_utc(v)

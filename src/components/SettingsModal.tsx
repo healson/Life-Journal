@@ -2,17 +2,18 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import { createPortal } from "react-dom"
 import {
   X, Check, Palette, Database, User, Download, Upload, Trash2, KeyRound,
-  UserPlus, Shield, RefreshCw,
+  UserPlus, Shield, RefreshCw, Copy, CalendarClock,
 } from "lucide-react"
 import { THEMES, applyTheme, getStoredTheme, type ThemeId } from "../lib/theme"
-import { cn } from "../lib/utils"
+import { cn, formatDate } from "../lib/utils"
 import { store } from "../store"
 import { emitChange } from "../lib/events"
 import { confirmDialog } from "./ConfirmDialog"
 import pkg from "../../package.json"
 import {
-  apiChangePassword, apiClearAll, apiCreateUser, apiDeleteUser, apiExportData,
-  apiImportData, apiListUsers, apiResetPassword, apiUpdateUsername, type UserDto,
+  apiCalendarFeedUrl, apiChangePassword, apiClearAll, apiCreateUser, apiDeleteUser,
+  apiExportData, apiImportData, apiListUsers, apiResetPassword, apiUpdateUsername,
+  type UserDto,
 } from "../api/client"
 
 type Tab = "appearance" | "data" | "account"
@@ -39,7 +40,9 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const [renameId, setRenameId] = useState<number | null>(null)
   const [renameName, setRenameName] = useState("")
   const [userMsg, setUserMsg] = useState<string | null>(null)
+  const [feedCopied, setFeedCopied] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  const feedInputRef = useRef<HTMLInputElement>(null)
 
   const me = store.state.currentUser
   const isAdmin = !!me?.isAdmin
@@ -52,6 +55,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       setUserMsg(null)
       setResetId(null)
       setRenameId(null)
+      setFeedCopied(false)
     }
   }, [open])
 
@@ -130,6 +134,20 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       alert(e?.message ?? "清空失败")
     } finally {
       setBusy(null)
+    }
+  }
+
+  // ── 日历订阅 ──
+  const handleCopyFeed = async () => {
+    const url = apiCalendarFeedUrl()
+    if (!url) return
+    try {
+      await navigator.clipboard.writeText(url)
+      setFeedCopied(true)
+      setTimeout(() => setFeedCopied(false), 2000)
+    } catch {
+      // 非 HTTPS 环境剪贴板不可用：全选输入框让用户手动复制
+      feedInputRef.current?.select()
     }
   }
 
@@ -388,6 +406,40 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                 {busy === "clear" && <RefreshCw className="w-4 h-4 text-text-muted animate-spin" />}
               </button>
             )}
+
+            {/* 日历订阅 */}
+            <div className="pt-4 border-t border-border-light">
+              <div className="text-[11px] font-semibold text-text-muted uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                <CalendarClock className="w-3.5 h-3.5" />
+                日历订阅
+              </div>
+              <p className="text-[11px] text-text-muted mb-2 leading-relaxed">
+                手机「日历 → 添加订阅日历」粘贴此地址，带截止日期或提醒的待办会显示在系统日历，
+                日历应用会按自己的刷新周期自动拉取更新。
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  ref={feedInputRef}
+                  readOnly
+                  value={apiCalendarFeedUrl() ?? ""}
+                  onFocus={(e) => e.target.select()}
+                  placeholder="登录后生成订阅地址"
+                  className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-background border border-border text-xs text-text-secondary outline-none focus:border-primary/40"
+                />
+                <button
+                  type="button"
+                  onClick={handleCopyFeed}
+                  disabled={!apiCalendarFeedUrl()}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-hover text-xs font-medium text-text-secondary hover:bg-surface-active disabled:opacity-50 transition-colors flex-shrink-0"
+                >
+                  {feedCopied ? <Check className="w-3.5 h-3.5 text-primary" /> : <Copy className="w-3.5 h-3.5" />}
+                  {feedCopied ? "已复制" : "复制"}
+                </button>
+              </div>
+              <p className="text-[11px] text-text-muted mt-1.5 leading-relaxed">
+                地址含登录凭据且长期有效，请勿分享；修改密码或更换密钥后需重新复制。
+              </p>
+            </div>
           </div>
         )}
 
@@ -516,7 +568,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                               <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary flex-shrink-0">管理员</span>
                             )}
                           </div>
-                          <div className="text-[10px] text-text-muted">{store.state.currentUser?.username === u.username ? "当前账号" : u.created_at?.slice(0, 10)}</div>
+                          <div className="text-[10px] text-text-muted">{store.state.currentUser?.username === u.username ? "当前账号" : (u.created_at ? formatDate(u.created_at) : "")}</div>
                         </div>
 
                         {/* 重置密码（行内输入） */}

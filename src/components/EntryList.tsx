@@ -2,13 +2,15 @@ import { useMemo } from "react"
 import { Search, X, History, Calendar, CheckSquare, Menu } from "lucide-react"
 import { store } from "../store"
 import { useStore } from "../lib/observer"
+import { formatDate } from "../lib/utils"
 import { EntryCard } from "./EntryCard"
 import { TodoMiniCard } from "./TodoMiniCard"
 import type { JournalEntry } from "../types"
 
-/** 取日记的逻辑日期（优先自定义 date，fallback createdAt） */
+/** 取日记的逻辑日期（优先自定义 date，fallback createdAt 按本地时区取日期，
+ * 直接 slice 会拿到 UTC 日期，凌晨 0-8 点创建的日记会归到前一天） */
 function entryDateStr(e: JournalEntry): string {
-  return e.date ?? e.createdAt.slice(0, 10)
+  return e.date ?? formatDate(e.createdAt)
 }
 
 function entryDateObj(e: JournalEntry): Date {

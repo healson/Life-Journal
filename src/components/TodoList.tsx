@@ -100,17 +100,42 @@ export function TodoList({ onMenuClick }: { onMenuClick?: () => void }) {
         ))}
       </div>
 
-      {/* 列表 */}
+      {/* 列表：全部视图分「未完成 | 已完成」两列（手机端上下堆叠）；筛选视图单列 */}
       <div className="flex-1 overflow-y-auto px-8 py-6">
-        <div className="max-w-2xl mx-auto space-y-2">
-          {filtered.length === 0 && (
-            <div className="text-center py-16 text-text-muted">
-              这个分类下还没有待办 ✨
+        <div className="max-w-2xl md:max-w-5xl mx-auto">
+          {filter === "all" ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8 items-start">
+              <TodoColumn
+                title="未完成"
+                count={filtered.filter((t) => t.status !== "done").length}
+                empty="太棒了，没有未完成的待办 🎉"
+              >
+                {filtered.filter((t) => t.status !== "done").map((todo) => (
+                  <TodoItem key={todo.id} todo={todo} onEdit={setEditing} />
+                ))}
+              </TodoColumn>
+              <TodoColumn
+                title="已完成"
+                count={filtered.filter((t) => t.status === "done").length}
+                empty="还没有已完成的待办"
+              >
+                {filtered.filter((t) => t.status === "done").map((todo) => (
+                  <TodoItem key={todo.id} todo={todo} onEdit={setEditing} />
+                ))}
+              </TodoColumn>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {filtered.length === 0 && (
+                <div className="text-center py-16 text-text-muted">
+                  这个分类下还没有待办 ✨
+                </div>
+              )}
+              {filtered.map((todo) => (
+                <TodoItem key={todo.id} todo={todo} onEdit={setEditing} />
+              ))}
             </div>
           )}
-          {filtered.map((todo) => (
-            <TodoItem key={todo.id} todo={todo} onEdit={setEditing} />
-          ))}
         </div>
       </div>
 
@@ -120,6 +145,31 @@ export function TodoList({ onMenuClick }: { onMenuClick?: () => void }) {
       {editing && (
         <TodoDialog initial={editing} onClose={() => setEditing(null)} />
       )}
+    </div>
+  )
+}
+
+/** 单列：带标题/计数的分组（未完成 / 已完成） */
+function TodoColumn({ title, count, empty, children }: {
+  title: string
+  count: number
+  empty: string
+  children: React.ReactNode
+}) {
+  return (
+    <div>
+      <div className="mb-3 flex items-center gap-2">
+        <h2 className="text-sm font-semibold text-text">{title}</h2>
+        <span className="text-xs px-1.5 py-0.5 rounded-full bg-surface-active text-text-muted">{count}</span>
+      </div>
+      <div className="space-y-2">
+        {count === 0 && (
+          <div className="text-center py-8 text-text-muted text-sm border border-dashed border-border-light rounded-xl">
+            {empty}
+          </div>
+        )}
+        {children}
+      </div>
     </div>
   )
 }
@@ -178,6 +228,13 @@ function TodoItem({ todo, onEdit }: { todo: Todo; onEdit: (t: Todo) => void }) {
             {priority.label}
           </span>
         </div>
+
+        {/* 备注：直接完整展示，无需进入详情 */}
+        {todo.description && (
+          <p className="mt-1.5 text-xs text-text-secondary whitespace-pre-wrap break-words leading-relaxed">
+            {todo.description}
+          </p>
+        )}
 
         {/* 元信息 */}
         <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-text-muted">

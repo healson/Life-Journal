@@ -2,7 +2,7 @@ import { LogOut, Anchor, Settings, NotebookPen } from "lucide-react"
 import { useState } from "react"
 import { store } from "../store"
 import { useStore } from "../lib/observer"
-import { cn } from "../lib/utils"
+import { cn, formatDate } from "../lib/utils"
 import { CalendarWidget } from "./CalendarWidget"
 import { SettingsModal } from "./SettingsModal"
 
@@ -35,11 +35,11 @@ export function Sidebar({ onViewChange }: Props) {
   // 排除“往年今日”这类回忆条目，否则基线会被拉到几年前导致日均≈0
   const nowYear = new Date().getFullYear()
   const activeEntries = state.entries.filter((e) => {
-    const ds = e.date ?? e.createdAt.slice(0, 10)
+    const ds = e.date ?? formatDate(e.createdAt)
     return Number(ds.slice(0, 4)) === nowYear
   })
   const firstDate = activeEntries.length > 0
-    ? new Date(Math.min(...activeEntries.map((e) => new Date((e.date ?? e.createdAt).slice(0, 10)).getTime())))
+    ? new Date(Math.min(...activeEntries.map((e) => new Date(e.date ?? formatDate(e.createdAt)).getTime())))
     : new Date()
   const today = new Date()
   // 注意：日记用了将来的日期（如下个月）时不参与过去日均的分子分母之外的判断，

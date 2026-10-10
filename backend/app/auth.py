@@ -30,9 +30,11 @@ def create_access_token(user_id: int, username: str) -> str:
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def decode_token(token: str):
-    """返回 payload；无效则抛 JWTError"""
-    return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+def decode_token(token: str, verify_exp: bool = True):
+    """返回 payload；无效则抛 JWTError。
+    verify_exp=False 供 ICS 日历订阅使用：订阅地址需长期有效
+    （手机日历按固定周期拉取），此时仅校验签名不校验有效期。"""
+    return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": verify_exp})
 
 
 def get_user_by_username(db: Session, username: str) -> User | None:

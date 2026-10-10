@@ -70,6 +70,14 @@ export function apiRegister(username: string, password: string) {
 // ── Auth: 用户与账户 ──
 export interface UserDto { id: number; username: string; is_admin: boolean; created_at: string }
 export function apiMe() { return request<UserDto>("/auth/me") }
+
+/** ICS 日历订阅地址：手机日历「添加订阅日历」时粘贴。
+ * 日历客户端无法带 Authorization 头，故 token 走查询参数。 */
+export function apiCalendarFeedUrl(): string | null {
+  const token = getToken()
+  if (!token) return null
+  return `${window.location.origin}${BASE}/todos/calendar.ics?token=${encodeURIComponent(token)}`
+}
 export function apiChangePassword(old_password: string, new_password: string) {
   return request<{ ok: boolean }>("/auth/change-password", { method: "POST", body: { old_password, new_password } })
 }

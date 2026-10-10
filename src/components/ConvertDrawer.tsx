@@ -201,7 +201,7 @@ export function ConvertDrawer() {
         <div className="p-5 border-t border-border-light space-y-2">
           {entry && (
             <div className="text-[11px] text-text-muted flex items-center gap-1">
-              🔔 提醒将通过 CalDAV 同步到你的 vivo 系统日历
+              🔔 复制「设置 → 数据 → 日历订阅」的地址，可把待办显示到手机日历
             </div>
           )}
           <div className="flex gap-2">

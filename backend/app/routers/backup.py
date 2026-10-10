@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..deps import get_current_admin, get_current_user
-from ..models import JournalEntry, Todo, User
+from ..models import JournalEntry, Todo, User, iso_utc
 from ..schemas import ImportRequest
 
 router = APIRouter(prefix="/api/backup", tags=["backup"])
@@ -22,8 +22,8 @@ def _entry_dict(e: JournalEntry) -> dict:
         "entry_type": e.entry_type,
         "is_pinned": e.is_pinned,
         "date": e.date,
-        "created_at": e.created_at.isoformat() if e.created_at else None,
-        "updated_at": e.updated_at.isoformat() if e.updated_at else None,
+        "created_at": iso_utc(e.created_at),
+        "updated_at": iso_utc(e.updated_at),
     }
 
 
@@ -36,10 +36,11 @@ def _todo_dict(t: Todo) -> dict:
         "priority": t.priority,
         "status": t.status,
         "due_date": t.due_date,
+        # remind_at 是本地墙上时间，保持 naive（与序列化层约定一致）
         "remind_at": t.remind_at.isoformat() if t.remind_at else None,
         "synced_to_calendar": t.synced_to_calendar,
-        "completed_at": t.completed_at.isoformat() if t.completed_at else None,
-        "created_at": t.created_at.isoformat() if t.created_at else None,
+        "completed_at": iso_utc(t.completed_at),
+        "created_at": iso_utc(t.created_at),
     }
 
 

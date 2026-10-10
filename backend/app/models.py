@@ -20,18 +20,26 @@ def utcnow():
 
 
 class UTCDateTime(SADateTime):
-    """读出时间列时统一补充 UTC 时区，保证前端 new Date() 按 UTC 正确换算本地时间。"""
+    """时间列类型（名义上声明 UTC 语义）。
 
-    def result_processor(self, dialect, coltype):
-        origin = getattr(SADateTime, "result_processor")(self, dialect, coltype)
+    【重要】SQLite 方言的 type_descriptor 会沿 MRO 把本类适配回原生 DATETIME，
+    任何自定义 result_processor 都不会执行，读出的时间一律是 naive。
+    当前全链路约定（时区由序列化层负责，勿在此处再加处理器）：
+    - created_at / updated_at / completed_at：服务端 utcnow() 生成，存 UTC 墙钟，
+      由 schemas 序列化时经 iso_utc() 输出带 Z 的 ISO 串；
+    - remind_at：存前端 datetime-local 输入的本地墙上时间，原样存取，
+      输出保持 naive 由前端按本地解析（ICS 订阅按浮游时间输出）。
+    若未来更换数据库方言，需同步重新审视序列化层的时区处理。"""
 
-        def process(value):
-            value = origin(value) if origin else value
-            if value is not None and value.tzinfo is None:
-                return value.replace(tzinfo=timezone.utc)
-            return value
 
-        return process
+def iso_utc(dt: datetime | None) -> str | None:
+    """把 UTC 墙钟时间序列化为带 Z 的 ISO 串（naive 按 UTC 解释）。
+    前端 new Date() 认识 Z 后缀，才能正确换算成本地时间显示。"""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 class User(Base):

@@ -21,7 +21,7 @@ import { useStore } from "../lib/observer"
 import { launchEnvelope } from "../lib/envelope"
 import { FontSize } from "../lib/fontSize"
 import { exportMarkdown, exportPdf, exportWord } from "../lib/export"
-import { cn } from "../lib/utils"
+import { cn, formatDate } from "../lib/utils"
 import { MOOD_LABELS } from "../types"
 
 interface Props {
@@ -179,16 +179,17 @@ function EntryMetaBar({ entry, onSave }: {
   onSave: (patch: Parameters<typeof store.updateEntry>[1]) => void
 }) {
   const moods = [
-    { key: "happy", emoji: "😊" },
-    { key: "calm", emoji: "😌" },
-    { key: "energetic", emoji: "🔥" },
-    { key: "tired", emoji: "😴" },
-    { key: "sad", emoji: "😔" },
-    { key: "angry", emoji: "😤" },
+    { key: "happy", emoji: "🙂" },
+    { key: "calm", emoji: "🤣" },
+    { key: "energetic", emoji: "💪" },
+    { key: "tired", emoji: "🤔" },
+    { key: "angry", emoji: "😡" },
+    { key: "sad", emoji: "😭" },
+    { key: "helpless", emoji: "🙄" },
   ] as const
 
   // 自定义日期：优先用 entry.date，否则 fallback 到 createdAt
-  const currentDate = entry.date ?? entry.createdAt.slice(0, 10)
+  const currentDate = entry.date ?? formatDate(entry.createdAt)
 
   return (
     <div className="px-8 pt-6 pb-4 border-b border-border-light max-md:px-5 max-md:pt-4">
@@ -218,7 +219,7 @@ function EntryMetaBar({ entry, onSave }: {
                   ? "bg-surface-active ring-2 ring-primary/30 scale-110"
                   : "hover:bg-surface-hover"
               }`}
-              title={m.key}
+              title={MOOD_LABELS[m.key].label}
             >
               {m.emoji}
             </button>
@@ -305,7 +306,7 @@ function EditorStatusBar({ editor, entry }: {
   const wordCount = cjkCount + latinCount
   const markdown = editor.storage.markdown?.getMarkdown?.() ?? editor.getHTML()
   const title = entry.title || "无标题"
-  const date = entry.date ?? entry.createdAt.slice(0, 10)
+  const date = entry.date ?? formatDate(entry.createdAt)
   const html = editor.getHTML()
   return (
     <div className="flex items-center justify-between px-6 py-2 border-t border-border-light text-xs text-text-muted bg-surface/50">
@@ -523,7 +524,7 @@ function ReadOnlyEntry({
           <div className="px-8 pt-6 pb-4 border-b border-border-light max-md:px-5 max-md:pt-4">
             <h1 className="text-3xl font-bold break-words">{entry.title || "无标题"}</h1>
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 whitespace-nowrap text-xs text-text-muted">
-              <span>📅 {entry.date ?? entry.createdAt.slice(0, 10)}</span>
+              <span>📅 {entry.date ?? formatDate(entry.createdAt)}</span>
               {mood && (
                 <span>
                   {mood.emoji} {mood.label}

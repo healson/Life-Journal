@@ -1,4 +1,4 @@
-export type Mood = "happy" | "calm" | "energetic" | "tired" | "sad" | "angry"
+export type Mood = "happy" | "calm" | "energetic" | "tired" | "sad" | "angry" | "helpless"
 
 export type EntryType = "daily" | "inspiration" | "behavior"
 
@@ -39,12 +39,13 @@ export interface JournalEntry {
 }
 
 export const MOOD_LABELS: Record<Mood, { emoji: string; label: string; color: string }> = {
-  happy:       { emoji: "😊", label: "开心", color: "#FBBF24" },
-  calm:        { emoji: "😌", label: "平静", color: "#60A5FA" },
-  energetic:   { emoji: "🔥", label: "干劲", color: "#F87171" },
-  tired:       { emoji: "😴", label: "疲惫", color: "#A78BFA" },
-  sad:         { emoji: "😔", label: "低落", color: "#94A3B8" },
-  angry:       { emoji: "😤", label: "烦躁", color: "#EF4444" },
+  happy:       { emoji: "🙂", label: "微笑", color: "#FBBF24" },
+  calm:        { emoji: "🤣", label: "大笑", color: "#60A5FA" },
+  energetic:   { emoji: "💪", label: "奋斗", color: "#F87171" },
+  tired:       { emoji: "🤔", label: "沉思", color: "#A78BFA" },
+  angry:       { emoji: "😡", label: "生气", color: "#EF4444" },
+  sad:         { emoji: "😭", label: "伤心", color: "#94A3B8" },
+  helpless:    { emoji: "🙄", label: "无奈", color: "#14B8A6" },
 }
 
 export const PRIORITY_LABELS = {

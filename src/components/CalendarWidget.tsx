@@ -2,7 +2,7 @@ import { useState, useMemo } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { store } from "../store"
 import { useStore } from "../lib/observer"
-import { cn } from "../lib/utils"
+import { cn, formatDate } from "../lib/utils"
 
 /** 统一补零日期格式 YYYY-MM-DD，与日记 date / 中间栏筛选保持一致 */
 const pad = (n: number) => String(n).padStart(2, "0")
@@ -26,7 +26,7 @@ export function CalendarWidget() {
   const dayCounts = useMemo(() => {
     const counts: Record<string, number> = {}
     for (const e of state.entries) {
-      const ds = e.date ?? e.createdAt.slice(0, 10)
+      const ds = e.date ?? formatDate(e.createdAt)
       counts[ds] = (counts[ds] || 0) + 1
     }
     return counts
