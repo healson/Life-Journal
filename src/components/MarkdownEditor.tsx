@@ -14,7 +14,7 @@ import HorizontalRule from "@tiptap/extension-horizontal-rule"
 import { Markdown } from "tiptap-markdown"
 import { ResizableImage } from "../lib/resizableImage"
 import { useEffect, useCallback, useRef, useState } from "react"
-import { CalendarDays, ChevronLeft, ChevronRight, FileDown, FileText, FileType, Pencil } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, FileDown, FileText, FileType, Pencil, ListTree } from "lucide-react"
 import { ToolBar } from "./ToolBar"
 import { store, DRAFT_ID } from "../store"
 import { useStore } from "../lib/observer"
@@ -27,6 +27,14 @@ import { MOOD_LABELS } from "../types"
 interface Props {
   entryId: string
   readOnly?: boolean
+}
+
+/** 大纲目录条目 */
+interface OutlineItem {
+  id: string
+  text: string
+  level: number
+  top: number
 }
 
 // 星期表头
@@ -119,6 +127,93 @@ export function MarkdownEditor({ entryId, readOnly }: Props) {
     editor.chain().focus().extendMarkRange("link").setLink({ href: validatedUrl }).run()
   }, [editor])
 
+  // ── 浮动大纲目录（hooks 必须在下方条件 return 之前）──
+  const scrollBoxRef = useRef<HTMLDivElement>(null)
+  const [outline, setOutline] = useState<OutlineItem[]>([])
+  const [outlineOpen, setOutlineOpen] = useState(false)
+  const [activeOutlineId, setActiveOutlineId] = useState<string | null>(null)
+  const headingElsRef = useRef<OutlineItem[]>([])
+  const outlineRef = useRef<OutlineItem[]>([])
+
+  // 从编辑器 DOM 提取标题作为大纲（编辑内容/切换日记时重建）
+  const rebuildOutline = useCallback(() => {
+    if (!editor) return
+    const box = scrollBoxRef.current
+    const boxRect = box?.getBoundingClientRect()
+    const root = editor.view.dom
+    const items: OutlineItem[] = []
+    root.querySelectorAll<HTMLElement>("h1, h2, h3").forEach((el) => {
+      const text = (el.textContent ?? "").trim()
+      if (!text) return
+      const id = el.dataset.outlineId ?? `h-${items.length}-${Math.random().toString(36).slice(2, 8)}`
+      el.dataset.outlineId = id
+      // 相对滚动容器的位置：用 rect 差值，不受 offsetParent 影响
+      const top = box && boxRect
+        ? el.getBoundingClientRect().top - boxRect.top + box.scrollTop
+        : el.offsetTop
+      items.push({ id, text, level: Number(el.tagName[1]), top })
+    })
+    headingElsRef.current = items
+    // 内容与位置都没变则跳过 setState，避免打字时无谓重渲染
+    const prev = outlineRef.current
+    const changed =
+      prev.length !== items.length ||
+      items.some((it, i) => {
+        const p = prev[i]
+        return !p || p.id !== it.id || p.text !== it.text || p.level !== it.level || Math.abs(p.top - it.top) > 1
+      })
+    if (changed) {
+      outlineRef.current = items
+      setOutline(items)
+    }
+  }, [editor])
+
+  useEffect(() => {
+    if (!editor) return
+    rebuildOutline()
+    // 编辑器 DOM 变化（增删标题/输入）时重建，用 rAF 合并高频触发
+    let raf = 0
+    const schedule = () => {
+      if (raf) return
+      raf = requestAnimationFrame(() => {
+        raf = 0
+        rebuildOutline()
+      })
+    }
+    const observer = new MutationObserver(schedule)
+    observer.observe(editor.view.dom, { childList: true, subtree: true, characterData: true })
+    return () => {
+      observer.disconnect()
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [editor, rebuildOutline])
+
+  // 滚动时高亮当前可见的最高级标题
+  const handleScroll = useCallback(() => {
+    const box = scrollBoxRef.current
+    if (!box) return
+    const headTop = 60 // 顶部工具栏大致高度
+    let current: string | null = null
+    for (const item of headingElsRef.current) {
+      if (item.top - box.scrollTop <= headTop) current = item.id
+      else break
+    }
+    if (current !== activeOutlineId) setActiveOutlineId(current)
+  }, [activeOutlineId])
+
+  const jumpTo = (item: OutlineItem) => {
+    const box = scrollBoxRef.current
+    if (!box || !editor) return
+    box.scrollTo({ top: item.top - 56, behavior: "smooth" })
+    setActiveOutlineId(item.id)
+    // 把光标也移过去，方便继续编辑
+    const el = box.querySelector<HTMLElement>(`[data-outline-id="${item.id}"]`)
+    if (el) {
+      const pos = editor.view.posAtDOM(el, 0)
+      editor.chain().focus().setTextSelection(pos).run()
+    }
+  }
+
   if (!editor) return null
   if (!entry) return null
 
@@ -147,9 +242,9 @@ export function MarkdownEditor({ entryId, readOnly }: Props) {
   }
 
   return (
-    <div className="h-full flex-1 min-h-0 flex flex-col bg-surface" onBlur={handleBlur}>
+    <div className="h-full flex-1 min-h-0 flex flex-col bg-surface relative" onBlur={handleBlur}>
       {/* 编辑器区域 */}
-      <div className="flex-1 overflow-y-auto max-md:pb-28">
+      <div ref={scrollBoxRef} onScroll={handleScroll} className="flex-1 overflow-y-auto max-md:pb-28">
         <div className="max-w-3xl mx-auto">
           {/* 标题 + 心情 + 标签 + 自定义日期 */}
           <EntryMetaBar entry={entry} onSave={save} />
@@ -168,8 +263,89 @@ export function MarkdownEditor({ entryId, readOnly }: Props) {
         </div>
       </div>
 
+      {/* 浮动大纲目录：编辑区右侧悬浮，按标题层级切换；无标题时收起 */}
+      {outline.length > 0 && (
+        <OutlinePanel
+          items={outline}
+          activeId={activeOutlineId}
+          open={outlineOpen}
+          onToggle={() => setOutlineOpen((v) => !v)}
+          onJump={jumpTo}
+        />
+      )}
+
       {/* 底部状态栏 */}
       <EditorStatusBar editor={editor} entry={entry} />
+    </div>
+  )
+}
+
+/**
+ * 浮动大纲目录：悬浮在编辑区右侧，点击标题跳转到对应位置。
+ * 收起态只剩一个竖排「目录」把手，不遮挡正文；手机端（窄屏）不显示。
+ */
+function OutlinePanel({ items, activeId, open, onToggle, onJump }: {
+  items: OutlineItem[]
+  activeId: string | null
+  open: boolean
+  onToggle: () => void
+  onJump: (item: OutlineItem) => void
+}) {
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={onToggle}
+        title="展开大纲目录"
+        className="hidden md:flex absolute right-3 top-1/2 -translate-y-1/2 z-20 flex-col items-center gap-1.5 px-1.5 py-3 rounded-l-xl border border-r-0 border-border-light bg-surface/95 backdrop-blur text-text-muted hover:text-primary hover:border-primary/30 transition-colors shadow-card"
+      >
+        <ListTree className="w-4 h-4" />
+        <span className="text-[11px] leading-tight [writing-mode:vertical-rl] tracking-widest">目录</span>
+      </button>
+    )
+  }
+
+  return (
+    <div className="hidden md:flex absolute right-3 top-3 bottom-16 z-20 w-52 flex-col rounded-xl border border-border-light bg-surface/95 backdrop-blur shadow-card animate-fade-in-up">
+      {/* 头部 */}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border-light">
+        <span className="flex items-center gap-1.5 text-xs font-semibold text-text">
+          <ListTree className="w-3.5 h-3.5 text-primary" />
+          大纲目录
+        </span>
+        <button
+          type="button"
+          onClick={onToggle}
+          title="收起目录"
+          className="p-1 rounded text-text-muted hover:text-text hover:bg-surface-hover transition-colors"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* 条目列表 */}
+      <div className="flex-1 overflow-y-auto py-1.5 lj-scroll">
+        {items.map((item) => {
+          const active = item.id === activeId
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onJump(item)}
+              title={item.text}
+              className={cn(
+                "w-full text-left px-3 py-1.5 text-xs leading-snug transition-colors border-l-2",
+                item.level === 1 ? "pl-3" : item.level === 2 ? "pl-5" : "pl-7",
+                active
+                  ? "border-primary bg-primary/10 text-primary font-medium"
+                  : "border-transparent text-text-secondary hover:bg-surface-hover hover:text-text",
+              )}
+            >
+              <span className="truncate block">{item.text}</span>
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }

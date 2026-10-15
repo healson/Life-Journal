@@ -28,6 +28,7 @@ import {
   Type,
   ImagePlus,
   Lock,
+  RemoveFormatting,
 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { cn } from "../lib/utils"
@@ -268,6 +269,17 @@ export function ToolBar({ editor, onSetLink, entryId, isLocked = false }: Props)
         onClick={() => editor.chain().focus().toggleStrike().run()}
       >
         <Strikethrough className="w-4 h-4" />
+      </Btn>
+
+      {/* 清除格式：移除选区所有行内样式（加粗/颜色/高亮/字号/链接等），
+          并把标题/引用等块级格式恢复为普通段落、对齐恢复左对齐 */}
+      <Btn
+        title="清除所有格式"
+        onClick={() =>
+          editor.chain().focus().unsetAllMarks().clearNodes().unsetTextAlign().run()
+        }
+      >
+        <RemoveFormatting className="w-4 h-4" />
       </Btn>
 
       <Divider />
