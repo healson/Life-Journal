@@ -31,7 +31,8 @@ interface Props {
 
 /** 大纲目录条目 */
 interface OutlineItem {
-  id: string
+  id: string        // React key / 高亮标识（由序号构成，稳定）
+  index: number     // 在编辑器 h1,h2,h3 文档序中的位置
   text: string
   level: number
   top: number
@@ -136,22 +137,22 @@ export function MarkdownEditor({ entryId, readOnly }: Props) {
   const outlineRef = useRef<OutlineItem[]>([])
 
   // 从编辑器 DOM 提取标题作为大纲（编辑内容/切换日记时重建）
+  // 注意：不往标题 DOM 上挂 data 属性——ProseMirror 会重建受管节点导致属性丢失，
+  // 跳转改为按文档序 index 实时查询元素（见 jumpTo）。
   const rebuildOutline = useCallback(() => {
     if (!editor) return
     const box = scrollBoxRef.current
     const boxRect = box?.getBoundingClientRect()
     const root = editor.view.dom
     const items: OutlineItem[] = []
-    root.querySelectorAll<HTMLElement>("h1, h2, h3").forEach((el) => {
+    root.querySelectorAll<HTMLElement>("h1, h2, h3").forEach((el, idx) => {
       const text = (el.textContent ?? "").trim()
       if (!text) return
-      const id = el.dataset.outlineId ?? `h-${items.length}-${Math.random().toString(36).slice(2, 8)}`
-      el.dataset.outlineId = id
       // 相对滚动容器的位置：用 rect 差值，不受 offsetParent 影响
       const top = box && boxRect
         ? el.getBoundingClientRect().top - boxRect.top + box.scrollTop
         : el.offsetTop
-      items.push({ id, text, level: Number(el.tagName[1]), top })
+      items.push({ id: `h-${idx}`, index: idx, text, level: Number(el.tagName[1]), top })
     })
     headingElsRef.current = items
     // 内容与位置都没变则跳过 setState，避免打字时无谓重渲染
@@ -204,14 +205,22 @@ export function MarkdownEditor({ entryId, readOnly }: Props) {
   const jumpTo = (item: OutlineItem) => {
     const box = scrollBoxRef.current
     if (!box || !editor) return
-    box.scrollTo({ top: item.top - 56, behavior: "smooth" })
-    setActiveOutlineId(item.id)
-    // 把光标也移过去，方便继续编辑
-    const el = box.querySelector<HTMLElement>(`[data-outline-id="${item.id}"]`)
-    if (el) {
+    // 按文档序 index 实时查询（ProseMirror 会重建节点，缓存的 DOM 引用/data 属性不可靠）
+    const el = editor.view.dom.querySelectorAll<HTMLElement>("h1, h2, h3")[item.index]
+    if (!el) return
+    // 先定位光标，但禁用 ProseMirror 的 scrollIntoView：
+    // 它会直接赋值 scrollTop 打断平滑滚动甚至把视口拉回文档开头，导致"点击不跳转"
+    try {
       const pos = editor.view.posAtDOM(el, 0)
-      editor.chain().focus().setTextSelection(pos).run()
+      editor.chain().focus(pos, { scrollIntoView: false }).setTextSelection(pos).run()
+    } catch {
+      // 位置映射失败不影响滚动跳转
     }
+    // 实时测量目标位置（缓存的 top 会因图片/字体加载后布局变化而过期）
+    const top =
+      el.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop
+    box.scrollTo({ top: Math.max(0, top - 56), behavior: "smooth" })
+    setActiveOutlineId(item.id)
   }
 
   if (!editor) return null
@@ -245,7 +254,13 @@ export function MarkdownEditor({ entryId, readOnly }: Props) {
     <div className="h-full flex-1 min-h-0 flex flex-col bg-surface relative" onBlur={handleBlur}>
       {/* 编辑器区域 */}
       <div ref={scrollBoxRef} onScroll={handleScroll} className="flex-1 overflow-y-auto max-md:pb-28">
-        <div className="max-w-3xl mx-auto">
+        <div className={cn(
+          "max-w-3xl mx-auto",
+          // 右侧浮动大纲（把手/面板）悬浮在编辑区右缘，窄编辑列下会盖住正文行尾，
+          // 表现为"文字点不动、不能编辑"。按大纲状态给正文预留右侧空间，杜绝遮挡。
+          outline.length > 0 && "md:pr-10",
+          outlineOpen && "md:pr-56",
+        )}>
           {/* 标题 + 心情 + 标签 + 自定义日期 */}
           <EntryMetaBar entry={entry} onSave={save} />
 
