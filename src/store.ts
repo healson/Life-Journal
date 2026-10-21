@@ -1,11 +1,17 @@
 import type { JournalEntry, Todo } from "./types"
 import { emitChange } from "./lib/events"
 import { resetLastActivity, startIdleTimer, stopIdleTimer } from "./lib/idle"
+import { scheduleCalendarSync } from "./lib/calendarBridge"
 import {
   apiCompleteTodo, apiCreateEntry, apiCreateTodo, apiDeleteEntry, apiDeleteTodo,
   apiListEntries, apiListTodos, apiLockEntry, apiLogin, apiMe, apiRegister,
   apiTogglePin, apiUnlockEntry, apiUpdateEntry, apiUpdateTodo, getToken, setToken,
 } from "./api/client"
+
+/** 待办变化后同步到手机日历（仅 APK 且开关开启时生效，内部已防抖） */
+function syncCalendar() {
+  scheduleCalendarSync(() => state.todos)
+}
 
 /** 草稿条目的固定 id 标记（不在 entries 数组中） */
 export const DRAFT_ID = "__draft__"
@@ -130,6 +136,7 @@ async function loadData(fromUnlock = false) {
     ])
     state.entries = entries.map(toClient)
     state.todos = todos.map(toTodo)
+    syncCalendar()
     if (state.isUnlocked && state.entries[0]) {
       state.selectedEntryId = state.entries[0].id
     }
@@ -379,6 +386,7 @@ export const store = {
       }
       state.todos.unshift(todo)
       created.push(todo)
+      syncCalendar()
 
       apiCreateTodo(todoPayload(todo)).then((server: any) => {
         const idx = state.todos.findIndex((x) => x.id === tmpId)
@@ -386,6 +394,7 @@ export const store = {
           const merged = { ...state.todos[idx], ...toTodo(server) }
           state.todos = state.todos.map((x, i) => (i === idx ? merged : x))
           emitChange()
+          syncCalendar() // 临时 id 换服务器 id，重刷日历事件 UID
         }
       }).catch(() => {})
     }
@@ -402,6 +411,7 @@ export const store = {
       updated.completedAt = undefined
     }
     state.todos = state.todos.map((t, i) => (i === idx ? updated : t))
+    syncCalendar()
 
     // 后端统一走 complete 端点处理 done/pending
     const p = todoPayload(patch)
@@ -409,15 +419,19 @@ export const store = {
       apiCompleteTodo(id).then((server: any) => {
         state.todos = state.todos.map((t) => (t.id === id ? { ...t, ...toTodo(server) } : t))
         emitChange()
+        syncCalendar()
       }).catch(() => {})
     } else {
-      apiUpdateTodo(id, p).then(() => emitChange()).catch(() => {})
+      apiUpdateTodo(id, p).then(() => { emitChange(); syncCalendar() }).catch(() => {})
     }
   },
 
   deleteTodo(id: string) {
     const idx = state.todos.findIndex((t) => t.id === id)
-    if (idx >= 0) state.todos = state.todos.filter((t) => t.id !== id)
+    if (idx >= 0) {
+      state.todos = state.todos.filter((t) => t.id !== id)
+      syncCalendar()
+    }
     apiDeleteTodo(id).catch(() => {})
   },
 }

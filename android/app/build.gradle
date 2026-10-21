@@ -1,0 +1,66 @@
+plugins {
+    id 'com.android.application'
+}
+
+def keystorePropsFile = file('keystore.properties')
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystorePropsFile.withInputStream { keystoreProps.load(it) }
+}
+
+android {
+    namespace 'com.healson.lifejournal'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.healson.lifejournal"
+        minSdk 29
+        targetSdk 34
+        versionCode 5
+        versionName "0.6.0"
+    }
+
+    signingConfigs {
+        release {
+            if (keystorePropsFile.exists()) {
+                storeFile file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (keystorePropsFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+configurations.all {
+    resolutionStrategy {
+        // kotlin-stdlib-jdk7/jdk8 旧版 jar 与新 stdlib 类重复，统一到 1.8.22
+        force 'org.jetbrains.kotlin:kotlin-stdlib:1.8.22'
+        force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'
+        force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22'
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    // 源文件为 UTF-8（含中文注释），JDK17 在中文 Windows 默认按 GBK 编译
+    options.encoding = 'UTF-8'
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+}

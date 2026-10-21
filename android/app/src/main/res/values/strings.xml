@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">人生记趣录</string>
+    <string name="setup_title">人生记趣录</string>
+    <string name="setup_subtitle">记录人生中的每一份意趣</string>
+    <string name="label_host">服务器地址</string>
+    <string name="btn_connect">开始使用</string>
+    <string name="btn_retry">重试</string>
+    <string name="btn_server_settings">修改服务器地址</string>
+    <string name="error_title">连接失败</string>
+    <string name="gear_desc">服务器设置</string>
+</resources>

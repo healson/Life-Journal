@@ -2,13 +2,17 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import { createPortal } from "react-dom"
 import {
   X, Check, Palette, Database, User, Download, Upload, Trash2, KeyRound,
-  UserPlus, Shield, RefreshCw, Copy, CalendarClock,
+  UserPlus, Shield, RefreshCw, Copy, CalendarClock, CalendarSync,
 } from "lucide-react"
 import { THEMES, applyTheme, getStoredTheme, type ThemeId } from "../lib/theme"
 import { cn, formatDate } from "../lib/utils"
 import { store } from "../store"
 import { emitChange } from "../lib/events"
 import { confirmDialog } from "./ConfirmDialog"
+import {
+  calendarBridge, isCalendarSyncEnabled, setCalendarSyncEnabled,
+  syncNow, clearCalendarEvents, onCalendarPermissionResult,
+} from "../lib/calendarBridge"
 import pkg from "../../package.json"
 import {
   apiCalendarFeedUrl, apiChangePassword, apiClearAll, apiCreateUser, apiDeleteUser,
@@ -41,6 +45,10 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const [renameName, setRenameName] = useState("")
   const [userMsg, setUserMsg] = useState<string | null>(null)
   const [feedCopied, setFeedCopied] = useState(false)
+  // 手机日历同步（仅 APK 内显示）
+  const [calSyncOn, setCalSyncOn] = useState(false)
+  const [calSyncMsg, setCalSyncMsg] = useState<string | null>(null)
+  const calPermCleanup = useRef<(() => void) | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const feedInputRef = useRef<HTMLInputElement>(null)
 
@@ -56,8 +64,48 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       setResetId(null)
       setRenameId(null)
       setFeedCopied(false)
+      setCalSyncOn(isCalendarSyncEnabled())
+      setCalSyncMsg(null)
     }
   }, [open])
+
+  // ── 手机日历同步（APK 桥） ──
+  const handleToggleCalSync = () => {
+    if (calSyncOn) {
+      // 关闭：停开关并清除已写入的日历与事件
+      calPermCleanup.current?.()
+      calPermCleanup.current = null
+      setCalendarSyncEnabled(false)
+      setCalSyncOn(false)
+      const r = clearCalendarEvents()
+      setCalSyncMsg(r === "ok" ? "已关闭，并清除手机日历中的待办" : "已关闭（清除日历失败，可在手机日历中手动删除）")
+      return
+    }
+    // 打开：先落开关，再立即全量同步；无权限时原生会弹申请框
+    setCalendarSyncEnabled(true)
+    setCalSyncOn(true)
+    const r = syncNow(store.state.todos)
+    if (r === "ok") {
+      setCalSyncMsg("已开启，待办已同步到手机日历")
+    } else if (r === "requesting") {
+      setCalSyncMsg("请在系统弹窗中允许日历权限…")
+      calPermCleanup.current?.()
+      calPermCleanup.current = onCalendarPermissionResult((granted) => {
+        calPermCleanup.current = null
+        if (granted) {
+          const r2 = syncNow(store.state.todos)
+          setCalSyncMsg(r2 === "ok" ? "已开启，待办已同步到手机日历" : "同步失败：" + r2)
+        } else {
+          // 拒绝权限：回滚开关，避免后台反复尝试
+          setCalendarSyncEnabled(false)
+          setCalSyncOn(false)
+          setCalSyncMsg("未获得日历权限，无法同步；可在系统设置中授权后重试")
+        }
+      })
+    } else {
+      setCalSyncMsg("同步失败：" + r)
+    }
+  }
 
   useEffect(() => {
     if (!open) return
@@ -440,6 +488,38 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                 地址含登录凭据且长期有效，请勿分享；修改密码或更换密钥后需重新复制。
               </p>
             </div>
+
+            {/* 手机日历同步（仅 APK 内显示） */}
+            {calendarBridge() && (
+              <div className="pt-4 border-t border-border-light">
+                <div className="text-[11px] font-semibold text-text-muted uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                  <CalendarSync className="w-3.5 h-3.5" />
+                  手机日历同步
+                </div>
+                <p className="text-[11px] text-text-muted mb-2 leading-relaxed">
+                  开启后，带截止日期或提醒的待办会自动写入本机「人生记趣录·待办」日历，
+                  提醒到点由系统日历弹出；新增、修改、完成待办会即时同步。
+                </p>
+                <button
+                  type="button"
+                  onClick={handleToggleCalSync}
+                  className={cn(
+                    "flex items-center gap-2 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
+                    calSyncOn
+                      ? "bg-primary/10 text-primary hover:bg-primary/15"
+                      : "bg-surface-hover text-text-secondary hover:bg-surface-active",
+                  )}
+                >
+                  <span className="flex-1 text-left">
+                    {calSyncOn ? "已开启，点击关闭并清除" : "开启同步到手机日历"}
+                  </span>
+                  {calSyncOn && <Check className="w-4 h-4" />}
+                </button>
+                {calSyncMsg && (
+                  <p className="text-[11px] text-text-muted mt-1.5 leading-relaxed">{calSyncMsg}</p>
+                )}
+              </div>
+            )}
           </div>
         )}
 
