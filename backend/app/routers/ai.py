@@ -31,7 +31,8 @@ TERMS_SPLIT_RE = re.compile(r"[\s,，、;；]+")
 SYSTEM_SUMMARY = (
     "你是「人生记趣录」的日记助手。基于下方提供的日记检索结果回答用户问题：\n"
     "1. 用中文回答，简洁有条理，必要时分点；\n"
-    "2. 引用具体日记时标注日期与标题，如「[2026-10-01] 标题」；\n"
+    "2. 不要在正文里写任何引用标记（如 [日期]、标题、[1]、脚注等），"
+    "用于点击跳转的参考列表已在上方独立呈现；\n"
     "3. 若检索结果为空，如实告知没有找到相关日记，不要编造内容；\n"
     "4. 已锁定的日记内容不可见，忽略其空内容；\n"
     "5. 若给的是索引或摘要形式，根据标题与摘要尽量归纳出可提供的线索，不要仅因没有完整正文就放弃总结。"
@@ -99,7 +100,7 @@ def _search_sync(
         return [
             {
                 "id": row.id,
-                "date": row.date,
+                "date": _date_of(row),
                 "title": row.title,
                 "tags": row.tags or [],
                 "mood": row.mood,
@@ -125,7 +126,7 @@ def _recent_index_sync(user_id: int, limit: int = 40) -> list[dict]:
         return [
             {
                 "id": r.id,
-                "date": r.date,
+                "date": _date_of(r),
                 "title": r.title,
                 "snippet": "" if r.is_locked else (r.plain_text or "")[:300],
             }
@@ -133,6 +134,16 @@ def _recent_index_sync(user_id: int, limit: int = 40) -> list[dict]:
         ]
     finally:
         db.close()
+
+
+def _date_of(row: JournalEntry) -> str:
+    """逻辑日期优先，缺失则用 created_at 推导 YYYY-MM-DD 兜底，始终给 AI 一个日期。"""
+    if row.date:
+        return row.date
+    if row.created_at:
+        # SQLite 读出的 created_at 是 naive UTC
+        return row.created_at.strftime("%Y-%m-%d")
+    return "未知日期"
 
 
 def _extract_params(text: str) -> Optional[dict]:
