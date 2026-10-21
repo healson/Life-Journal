@@ -3,7 +3,7 @@
  * 所有 id 在后端为 int，这里统一转成 string 以匹配前端类型。
  */
 
-const BASE = (import.meta.env.VITE_API_BASE as string) || "/api"
+export const BASE = (import.meta.env.VITE_API_BASE as string) || "/api"
 
 export const TOKEN_KEY = "ryjq_token"
 

@@ -40,3 +40,17 @@ backend/app.db
 backend/.venv/
 backend/__pycache__/
 *.pyc
+
+# Android 构建产物与签名
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/keystore/
+android/keystore.properties
+android/app/keystore.properties
+android/.idea/
+android/captures/
+*.apk
+*.aab
+*.idsig

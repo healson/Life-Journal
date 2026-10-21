@@ -21,6 +21,7 @@ interface State {
   searchQuery: string
   showConvertDrawer: boolean
   showAddTodo: boolean   // “办”按钮触发的全局“新建待办”标志
+  aiChatOpen: boolean    // AI 搜索对话抽屉
   draft: JournalEntry | null
   booting: boolean       // 数据加载中
   ready: boolean         // 数据是否已加载完成（loadData 结束）
@@ -39,6 +40,7 @@ const state: State = {
   searchQuery: "",
   showConvertDrawer: false,
   showAddTodo: false,
+  aiChatOpen: false,
   draft: null,
   booting: false,
   ready: false,
@@ -364,6 +366,8 @@ export const store = {
   closeConvertDrawer() { state.showConvertDrawer = false; emitChange() },
   openAddTodo() { state.showAddTodo = true; emitChange() },
   closeAddTodo() { state.showAddTodo = false; emitChange() },
+  openAIChat() { state.aiChatOpen = true; emitChange() },
+  closeAIChat() { state.aiChatOpen = false; emitChange() },
 
   // ── Todos ──
   addTodos(todos: Omit<Todo, "id" | "createdAt" | "syncedToCalendar">[]): Todo[] {

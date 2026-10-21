@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import { Search, X, History, Calendar, CheckSquare, Menu } from "lucide-react"
+import { Search, X, History, Calendar, CheckSquare, Menu, Sparkles } from "lucide-react"
 import { store } from "../store"
 import { useStore } from "../lib/observer"
 import { formatDate } from "../lib/utils"
@@ -126,6 +126,15 @@ export function EntryList({
               </button>
             )}
           </div>
+          <button
+            type="button"
+            onClick={() => store.openAIChat()}
+            title="AI 搜索与总结"
+            className="flex-shrink-0 h-9 px-3 rounded-lg bg-accent hover:bg-accent-light text-white text-sm font-medium flex items-center gap-1.5 transition-colors"
+          >
+            <Sparkles className="w-4 h-4" />
+            AI
+          </button>
         </div>
 
         {/* 状态条 */}

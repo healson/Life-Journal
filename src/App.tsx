@@ -4,6 +4,7 @@ import { EntryList } from "./components/EntryList"
 import { MarkdownEditor } from "./components/MarkdownEditor"
 import { TodoList } from "./components/TodoList"
 import { ConvertDrawer } from "./components/ConvertDrawer"
+import { AIChatDrawer } from "./components/AIChatDrawer"
 import { LoginScreen } from "./components/LoginScreen"
 import { LockedEntryView } from "./components/LockedEntryView"
 import { EnvelopeLayer } from "./components/EnvelopeLayer"
@@ -252,6 +253,9 @@ export default function App() {
 
       {/* 转待办抽屉 */}
       <ConvertDrawer />
+
+      {/* AI 搜索对话抽屉 */}
+      <AIChatDrawer />
 
       {/* 信封飞行动画层（全屏固定 z-index 1000） */}
       <EnvelopeLayer />
