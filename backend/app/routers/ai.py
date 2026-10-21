@@ -25,13 +25,16 @@ AI_BASE_URL = os.environ.get("AI_BASE_URL", "https://api.deepseek.com").rstrip("
 AI_MODEL = os.environ.get("AI_MODEL", "deepseek-chat")
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+# 多关键词拆分：空格与中英文标点
+TERMS_SPLIT_RE = re.compile(r"[\s,，、;；]+")
 
 SYSTEM_SUMMARY = (
     "你是「人生记趣录」的日记助手。基于下方提供的日记检索结果回答用户问题：\n"
     "1. 用中文回答，简洁有条理，必要时分点；\n"
     "2. 引用具体日记时标注日期与标题，如「[2026-10-01] 标题」；\n"
     "3. 若检索结果为空，如实告知没有找到相关日记，不要编造内容；\n"
-    "4. 已锁定的日记内容不可见，忽略其空内容。"
+    "4. 已锁定的日记内容不可见，忽略其空内容；\n"
+    "5. 若给的是索引或摘要形式，根据标题与摘要尽量归纳出可提供的线索，不要仅因没有完整正文就放弃总结。"
 )
 
 
@@ -60,24 +63,39 @@ def _search_sync(
     date_to: Optional[str],
     limit: int = 20,
 ) -> list[dict]:
-    """同步检索（在线程中执行），返回紧凑日记摘要；锁定日记正文置空。"""
+    """同步检索（在线程中执行），返回紧凑日记摘要；锁定日记正文置空。
+
+    keywords 按空格/标点拆成多个词，任意一个词命中即算匹配（OR），
+    多个词同时命中的日记排在前面，再按日期倒序。
+    """
     db = SessionLocal()
     try:
         query = db.query(JournalEntry).filter(JournalEntry.owner_id == user_id)
-        if keywords:
-            like = f"%{keywords}%"
-            query = query.filter(
+        terms = [t for t in TERMS_SPLIT_RE.split(keywords) if t]
+        if terms:
+            conditions = [
                 or_(
-                    JournalEntry.title.ilike(like),
-                    JournalEntry.content.ilike(like),
-                    JournalEntry.plain_text.ilike(like),
+                    JournalEntry.title.ilike(f"%{t}%"),
+                    JournalEntry.content.ilike(f"%{t}%"),
+                    JournalEntry.plain_text.ilike(f"%{t}%"),
                 )
-            )
+                for t in terms
+            ]
+            query = query.filter(or_(*conditions))
         if date_from:
             query = query.filter(JournalEntry.date >= date_from)
         if date_to:
             query = query.filter(JournalEntry.date <= date_to)
-        rows = query.order_by(JournalEntry.date.desc()).limit(limit).all()
+        # 多取一些候选项，再按命中词数重排（全字段 ilike 无法在 SQL 里计数）
+        rows = query.order_by(JournalEntry.date.desc()).limit(100).all()
+
+        def hit_count(row: JournalEntry) -> int:
+            text = f"{row.title or ''} {row.plain_text or ''}".lower()
+            return sum(1 for t in terms if t.lower() in text)
+
+        if terms:
+            rows = sorted(rows, key=lambda r: (hit_count(r), r.date), reverse=True)
+        rows = rows[:limit]
         return [
             {
                 "id": row.id,
@@ -93,8 +111,8 @@ def _search_sync(
         db.close()
 
 
-def _recent_index_sync(user_id: int, limit: int = 30) -> list[dict]:
-    """检索为空时的兜底：最近日记索引（仅日期与标题）。"""
+def _recent_index_sync(user_id: int, limit: int = 40) -> list[dict]:
+    """检索为空时的兜底：最近日记索引（含正文摘要，锁定日记正文置空）。"""
     db = SessionLocal()
     try:
         rows = (
@@ -104,7 +122,15 @@ def _recent_index_sync(user_id: int, limit: int = 30) -> list[dict]:
             .limit(limit)
             .all()
         )
-        return [{"id": r.id, "date": r.date, "title": r.title} for r in rows]
+        return [
+            {
+                "id": r.id,
+                "date": r.date,
+                "title": r.title,
+                "snippet": "" if r.is_locked else (r.plain_text or "")[:300],
+            }
+            for r in rows
+        ]
     finally:
         db.close()
 
@@ -145,7 +171,9 @@ async def _extract_query(client: httpx.AsyncClient, question: str) -> Optional[d
     system = (
         "你是查询条件解析器。根据用户的日记查询问题，抽取用于全文搜索与日期过滤的条件，"
         f"只输出一个 JSON 对象，不要输出其他内容。今天是 {today}，相对日期据此换算。\n"
-        '格式：{"keywords": "用于全文搜索的关键词或空字符串", '
+        '格式：{"keywords": "1~3 个独立关键词，用空格分隔。只保留人名、地名、事物、事件等实体词，'
+        "例如把“我和小杨交往的怎么样”抽成“小杨”，把“上次去北京吃了什么”抽成“北京 吃”；"
+        '去掉“和/与/的/怎么样/最近”等虚词与整句，没有合适关键词则为空字符串", '
         '"date_from": "YYYY-MM-DD 或 null", "date_to": "YYYY-MM-DD 或 null"}'
     )
     try:
@@ -267,7 +295,11 @@ async def ask(
                 context += json.dumps(hits, ensure_ascii=False)
             else:
                 index = await anyio.to_thread.run_sync(_recent_index_sync, user.id)
-                context = "按条件没有检索到匹配日记。以下是最近日记索引（仅日期与标题）：\n"
+                context = (
+                    "按条件没有检索到匹配日记。以下是最近的日记索引"
+                    "（JSON 数组，snippet 为正文摘要，空表示锁定或无正文），"
+                    "请根据标题与摘要归纳可能相关的线索：\n"
+                )
                 context += json.dumps(index, ensure_ascii=False)
 
             # 3. 流式总结
