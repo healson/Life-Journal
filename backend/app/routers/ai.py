@@ -3,7 +3,7 @@
 import json
 import os
 import re
-from datetime import date as date_cls
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import anyio
@@ -178,7 +178,9 @@ def _extract_params(text: str) -> Optional[dict]:
 
 async def _extract_query(client: httpx.AsyncClient, question: str) -> Optional[dict]:
     """非流式轻量调用：从问题中抽取关键词与日期范围。失败返回 None。"""
-    today = date_cls.today().isoformat()
+    # 用户时区（容器通常为 UTC，直接 today() 在凌晨到早上 8 点会算成前一天，
+    # 导致「今天」类问题抽取错误日期）
+    today = datetime.now(timezone(timedelta(hours=8))).date().isoformat()
     system = (
         "你是查询条件解析器。根据用户的日记查询问题，抽取用于全文搜索与日期过滤的条件，"
         f"只输出一个 JSON 对象，不要输出其他内容。今天是 {today}，相对日期据此换算。\n"

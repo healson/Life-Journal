@@ -1,5 +1,6 @@
 import os
 import re
+from datetime import datetime, timedelta, timezone
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -71,7 +72,30 @@ def _backfill_plain_text():
         db.close()
 
 
+def _backfill_date():
+    """一次性数据修复：部分创建路径未传 date，导致落库为 NULL，
+    AI 检索与日历按日期过滤时这批日记被漏掉（前端列表按 createdAt 展示看不出异常）。
+    用 created_at（UTC）换算为用户本地（+8）日期回填。幂等，仅处理 date 为 NULL 的记录。"""
+    db = SessionLocal()
+    try:
+        rows = db.query(JournalEntry).filter(JournalEntry.date.is_(None)).all()
+        for e in rows:
+            created = e.created_at
+            if created is None:
+                continue
+            if isinstance(created, str):
+                created = datetime.fromisoformat(created)
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=timezone.utc)
+            e.date = (created + timedelta(hours=8)).strftime("%Y-%m-%d")
+        if rows:
+            db.commit()
+    finally:
+        db.close()
+
+
 _backfill_plain_text()
+_backfill_date()
 
 
 def _bootstrap_admin():

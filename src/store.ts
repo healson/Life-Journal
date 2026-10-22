@@ -233,6 +233,8 @@ export const store = {
   createEntry(data: Partial<JournalEntry>): JournalEntry {
     const tmpId = genId()
     const now = new Date().toISOString()
+    const n = new Date()
+    const pad = (x: number) => String(x).padStart(2, "0")
     const entry: JournalEntry = {
       id: tmpId,
       title: data.title ?? "",
@@ -243,7 +245,8 @@ export const store = {
       entryType: data.entryType ?? "daily",
       isPinned: false,
       isLocked: false,
-      date: data.date,
+      // 未显式指定日期时默认为本地当天：date 为 NULL 会被 AI/日历的日期过滤漏掉
+      date: data.date ?? `${n.getFullYear()}-${pad(n.getMonth() + 1)}-${pad(n.getDate())}`,
       createdAt: now,
       updatedAt: now,
     }
