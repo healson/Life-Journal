@@ -17,6 +17,7 @@ import { useEffect, useCallback, useRef, useState } from "react"
 import { CalendarDays, ChevronLeft, ChevronRight, FileDown, FileText, FileType, Pencil, ListTree } from "lucide-react"
 import { ToolBar } from "./ToolBar"
 import { store, DRAFT_ID } from "../store"
+import { apiUploadImage } from "../api/client"
 import { useStore } from "../lib/observer"
 import { launchEnvelope } from "../lib/envelope"
 import { FontSize } from "../lib/fontSize"
@@ -40,6 +41,19 @@ interface OutlineItem {
 
 // 星期表头
 const WEEKDAY_HEADERS: string[] = ["一", "二", "三", "四", "五", "六", "日"]
+
+/** 粘贴的剪贴板图片常无文件名或无后缀，按 MIME 补全以通过后端上传白名单 */
+const ensureImageFile = (file: File): File => {
+  if (/\.(png|jpe?g|gif|webp)$/i.test(file.name)) return file
+  const extMap: Record<string, string> = {
+    "image/png": "png",
+    "image/jpeg": "jpg",
+    "image/gif": "gif",
+    "image/webp": "webp",
+  }
+  const ext = extMap[file.type] ?? "png"
+  return new File([file], `pasted-image.${ext}`, { type: file.type || `image/${ext}` })
+}
 
 export function MarkdownEditor({ entryId, readOnly }: Props) {
   const state = useStore()
@@ -87,6 +101,18 @@ export function MarkdownEditor({ entryId, readOnly }: Props) {
     editorProps: {
       attributes: {
         class: "tiptap-editor",
+      },
+      // 粘贴图片：上传后插入编辑区（此前未实现，粘贴无反应）
+      handlePaste: (_view, event) => {
+        const files = event.clipboardData?.files
+        if (!files || files.length === 0) return false
+        const image = Array.from(files).find((f) => f.type.startsWith("image/"))
+        if (!image) return false
+        event.preventDefault()
+        apiUploadImage(ensureImageFile(image))
+          .then((url) => editor?.chain().focus().setImage({ src: url }).run())
+          .catch((err) => window.alert((err as Error)?.message || "图片上传失败"))
+        return true
       },
     },
     onUpdate: ({ editor }) => {
