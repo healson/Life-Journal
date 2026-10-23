@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import or_, text
 
 from . import auth as auth_mod
+from .auto_backup import start_backup_thread
 from .database import Base, SessionLocal, engine
 from .models import JournalEntry, User
 from .routers import ai, auth, backup, entries, todos, upload
@@ -96,6 +97,8 @@ def _backfill_date():
 
 _backfill_plain_text()
 _backfill_date()
+# 自动定时备份：回填完成后启动，备份的是修复后的数据
+start_backup_thread()
 
 
 def _bootstrap_admin():

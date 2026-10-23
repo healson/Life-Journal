@@ -35,6 +35,8 @@ gh_pat.txt
 # 数据库与数据卷
 data/
 backend/app.db
+# 自动备份快照（本地开发时位于 backend/backups/）
+backups/
 
 # 后端
 backend/.venv/
