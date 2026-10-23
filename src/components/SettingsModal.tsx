@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import { createPortal } from "react-dom"
 import {
   X, Check, Palette, Database, User, Download, Upload, Trash2, KeyRound,
-  UserPlus, Shield, RefreshCw, Copy, CalendarClock, CalendarSync,
+  UserPlus, Shield, RefreshCw, Copy, CalendarClock, CalendarSync, Archive,
 } from "lucide-react"
 import { THEMES, applyTheme, getStoredTheme, type ThemeId } from "../lib/theme"
 import { cn, formatDate } from "../lib/utils"
@@ -15,9 +15,10 @@ import {
 } from "../lib/calendarBridge"
 import pkg from "../../package.json"
 import {
-  apiCalendarFeedUrl, apiChangePassword, apiClearAll, apiCreateUser, apiDeleteUser,
-  apiExportData, apiImportData, apiListUsers, apiResetPassword, apiUpdateUsername,
-  type UserDto,
+  apiCalendarFeedUrl, apiChangePassword, apiClearAll, apiCreateSnapshot,
+  apiCreateUser, apiDeleteUser, apiDownloadSnapshot,
+  apiExportData, apiImportData, apiListSnapshots, apiListUsers, apiResetPassword,
+  apiUpdateUsername, type BackupStatus, type UserDto,
 } from "../api/client"
 
 type Tab = "appearance" | "data" | "account"
@@ -30,7 +31,10 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const [tab, setTab] = useState<Tab>("appearance")
 
   // 数据
-  const [busy, setBusy] = useState<"export" | "import" | "clear" | null>(null)
+  const [busy, setBusy] = useState<"export" | "import" | "clear" | "snapshot" | null>(null)
+  // 服务器自动快照（管理员）
+  const [snap, setSnap] = useState<BackupStatus | null>(null)
+  const [snapMsg, setSnapMsg] = useState<string | null>(null)
   // 账号
   const [oldPwd, setOldPwd] = useState("")
   const [newPwd, setNewPwd] = useState("")
@@ -55,6 +59,13 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const me = store.state.currentUser
   const isAdmin = !!me?.isAdmin
 
+  // 打开数据页时拉取自动快照状态（管理员）
+  useEffect(() => {
+    if (open && tab === "data" && isAdmin && snap === null) {
+      apiListSnapshots().then(setSnap).catch((e: any) => setSnapMsg(e?.message ?? "加载备份状态失败"))
+    }
+  }, [open, tab, isAdmin, snap])
+
   useEffect(() => {
     if (open) {
       setTheme(getStoredTheme())
@@ -66,6 +77,9 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       setFeedCopied(false)
       setCalSyncOn(isCalendarSyncEnabled())
       setCalSyncMsg(null)
+      // 重置快照状态：下次进数据页重新拉取，避免展示上次打开的旧列表
+      setSnap(null)
+      setSnapMsg(null)
     }
   }, [open])
 
@@ -182,6 +196,28 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       alert(e?.message ?? "清空失败")
     } finally {
       setBusy(null)
+    }
+  }
+
+  // ── 服务器自动快照（管理员）──
+  const handleCreateSnapshot = async () => {
+    setBusy("snapshot")
+    setSnapMsg(null)
+    try {
+      setSnap(await apiCreateSnapshot())
+      setSnapMsg("✅ 已生成最新快照")
+    } catch (e: any) {
+      setSnapMsg(`❌ ${e?.message ?? "生成失败"}`)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const handleDownloadSnapshot = async (name: string) => {
+    try {
+      await apiDownloadSnapshot(name)
+    } catch (e: any) {
+      alert(e?.message ?? "下载失败")
     }
   }
 
@@ -453,6 +489,81 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                 </span>
                 {busy === "clear" && <RefreshCw className="w-4 h-4 text-text-muted animate-spin" />}
               </button>
+            )}
+
+            {/* 服务器自动备份（管理员） */}
+            {isAdmin && (
+              <div className="pt-4 border-t border-border-light">
+                <div className="text-[11px] font-semibold text-text-muted uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                  <Archive className="w-3.5 h-3.5" />
+                  自动备份
+                </div>
+                <p className="text-[11px] text-text-muted mb-2 leading-relaxed">
+                  {!snap
+                    ? (snapMsg ?? "加载中…")
+                    : snap.enabled
+                      ? `服务器于每天 ${snap.backup_time}（北京时间）后自动生成数据库一致性快照，每 ${snap.interval_days} 天一份，保留最近 ${snap.keep} 份，存于 data/backups/ 目录。`
+                      : "自动备份未启用（数据库非 SQLite 文件），仅支持手动导出备份。"}
+                </p>
+
+                <button
+                  type="button"
+                  disabled={busy !== null || !snap?.enabled}
+                  onClick={handleCreateSnapshot}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-border-light bg-surface hover:bg-surface-hover disabled:opacity-50 transition-colors text-left"
+                >
+                  <span className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Archive className="w-4 h-4 text-primary" />
+                  </span>
+                  <span className="flex-1">
+                    <span className="block text-sm font-medium text-text">立即备份</span>
+                    <span className="block text-[11px] text-text-muted">
+                      生成当前数据库的一致性快照（覆盖今日快照）
+                    </span>
+                  </span>
+                  {busy === "snapshot" && <RefreshCw className="w-4 h-4 text-text-muted animate-spin" />}
+                </button>
+
+                {snapMsg && <p className="text-[11px] text-text-secondary mt-1.5">{snapMsg}</p>}
+
+                {/* 快照列表 */}
+                <div className="mt-2">
+                  {snap && snap.snapshots.length > 0 ? (
+                    <ul className="divide-y divide-border-light border border-border-light rounded-xl overflow-hidden">
+                      {snap.snapshots.map((s) => (
+                        <li key={s.name} className="flex items-center gap-2 p-2.5 bg-surface">
+                          <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <Database className="w-3.5 h-3.5 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-text">{s.date}</div>
+                            <div className="text-[10px] text-text-muted">
+                              {s.size < 1024 * 1024
+                                ? `${Math.max(1, Math.round(s.size / 1024))} KB`
+                                : `${(s.size / 1024 / 1024).toFixed(1)} MB`}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadSnapshot(s.name)}
+                            title="下载该快照"
+                            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-text-secondary hover:text-primary hover:bg-primary/10 rounded-md flex-shrink-0"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            下载
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    snap && (
+                      <p className="text-[11px] text-text-muted leading-relaxed">
+                        暂无快照，点击「立即备份」生成第一份。
+                      </p>
+                    )
+                  )}
+                </div>
+              </div>
             )}
 
             {/* 日历订阅 */}

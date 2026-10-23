@@ -1,8 +1,10 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from .. import auto_backup
 from ..database import get_db
 from ..deps import get_current_admin, get_current_user
 from ..models import JournalEntry, Todo, User, iso_utc
@@ -130,3 +132,27 @@ def clear_all(
     db.query(JournalEntry).delete(synchronize_session=False)
     db.commit()
     return {"ok": True}
+
+
+# ── 服务器自动快照（管理员）：快照含所有用户数据，仅管理员可查看/下载 ──
+
+
+@router.get("/snapshots")
+def list_snapshots(_: User = Depends(get_current_admin)):
+    return auto_backup.snapshot_status()
+
+
+@router.post("/snapshots")
+def create_snapshot(_: User = Depends(get_current_admin)):
+    """立即生成今日快照（已存在则覆盖），供 UI 手动触发与验证。"""
+    if not auto_backup.backup_now():
+        raise HTTPException(status_code=400, detail="生成快照失败，请查看后端日志")
+    return auto_backup.snapshot_status()
+
+
+@router.get("/snapshots/{name}")
+def download_snapshot(name: str, _: User = Depends(get_current_admin)):
+    path = auto_backup.snapshot_file(name)
+    if path is None:
+        raise HTTPException(status_code=404, detail="快照不存在")
+    return FileResponse(path, media_type="application/octet-stream", filename=name)

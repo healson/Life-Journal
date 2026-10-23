@@ -23,6 +23,7 @@ logger = logging.getLogger("lifejournal.backup")
 KEEP = 10  # 快照保留份数
 CHECK_INTERVAL = 60  # 检查间隔（秒）
 BJT = timezone(timedelta(hours=8))  # 北京时间（命名与判定不依赖容器时区）
+_LOCK = threading.Lock()  # 手动备份与定时线程互斥，避免并发写同一 tmp 文件
 
 # 备份时间（北京时间 HH:MM，默认凌晨 3 点）
 BACKUP_TIME = os.environ.get("BACKUP_TIME", "03:00").strip()
@@ -64,33 +65,80 @@ def _prune(backup_dir: Path) -> None:
             logger.warning("清理过期备份失败：%s", old)
 
 
-def backup_once(db_path: str, date_str: str) -> bool:
-    """生成当天一致性快照（已存在则跳过），返回是否新生成。"""
-    backup_dir = _backup_dir(db_path)
-    backup_dir.mkdir(parents=True, exist_ok=True)
-    target = backup_dir / f"app-{date_str}.db"
-    if target.exists():
-        return False
-    tmp = backup_dir / f"app-{date_str}.db.tmp"
-    try:
-        src = sqlite3.connect(db_path, timeout=10)
-        dst = sqlite3.connect(str(tmp))
+def backup_once(db_path: str, date_str: str, force: bool = False) -> bool:
+    """生成当天一致性快照（已存在则跳过，force=True 时原子覆盖），返回是否新生成。"""
+    with _LOCK:  # 定时线程与 API 手动触发可能同时执行，串行化防止写坏 tmp
+        backup_dir = _backup_dir(db_path)
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        target = backup_dir / f"app-{date_str}.db"
+        if target.exists() and not force:
+            return False
+        tmp = backup_dir / f"app-{date_str}.db.tmp"
         try:
-            # SQLite Backup API：事务一致的在线快照，无需停服
-            src.backup(dst)
-        finally:
-            dst.close()
-            src.close()
-        # 先写临时文件再原子改名，避免同步任务抓到半成品
-        tmp.replace(target)
-        logger.info("备份完成：%s", target)
-        _prune(backup_dir)
-        return True
-    except Exception:
-        logger.exception("备份失败：%s", target)
-        if tmp.exists():
-            tmp.unlink(missing_ok=True)
+            src = sqlite3.connect(db_path, timeout=10)
+            dst = sqlite3.connect(str(tmp))
+            try:
+                # SQLite Backup API：事务一致的在线快照，无需停服
+                src.backup(dst)
+            finally:
+                dst.close()
+                src.close()
+            # 先写临时文件再原子改名，避免同步任务抓到半成品
+            tmp.replace(target)
+            logger.info("备份完成：%s", target)
+            _prune(backup_dir)
+            return True
+        except Exception:
+            logger.exception("备份失败：%s", target)
+            if tmp.exists():
+                tmp.unlink(missing_ok=True)
+            return False
+
+
+def snapshot_status() -> dict:
+    """设置页「自动备份」区块用：备份配置 + 现有快照列表（按日期倒序）。"""
+    status = {
+        "enabled": False,
+        "backup_time": BACKUP_TIME,
+        "interval_days": BACKUP_INTERVAL_DAYS,
+        "keep": KEEP,
+        "snapshots": [],
+    }
+    db_path = _db_path()
+    if not db_path or not os.path.exists(db_path):
+        return status
+    status["enabled"] = True
+    snaps = []
+    for f in _backup_dir(db_path).glob("app-????-??-??.db"):
+        try:
+            date_str = date.fromisoformat(f.name[4:-3])  # app-YYYY-MM-DD.db → 日期
+            # stat 单独防御：列表期间文件可能正被 _prune 清理
+            snaps.append({"name": f.name, "date": date_str.isoformat(), "size": f.stat().st_size})
+        except (OSError, ValueError):
+            continue
+    snaps.sort(key=lambda s: s["date"], reverse=True)
+    status["snapshots"] = snaps
+    return status
+
+
+def snapshot_file(name: str):
+    """按文件名校验并解析快照绝对路径；非法名/非 SQLite/不存在时返回 None。"""
+    if not re.match(r"^app-\d{4}-\d{2}-\d{2}\.db$", name):
+        return None
+    db_path = _db_path()
+    if not db_path:
+        return None
+    path = _backup_dir(db_path) / name
+    return path if path.is_file() else None
+
+
+def backup_now() -> bool:
+    """立即生成今日快照（已存在则覆盖重建），返回是否生成成功。"""
+    db_path = _db_path()
+    if not db_path or not os.path.exists(db_path):
         return False
+    date_str = datetime.now(BJT).strftime("%Y-%m-%d")
+    return backup_once(db_path, date_str, force=True)
 
 
 def _latest_backup_date(backup_dir: Path):

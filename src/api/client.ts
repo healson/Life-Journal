@@ -102,6 +102,38 @@ export function apiImportData(data: unknown) {
 }
 export function apiClearAll() { return request<{ ok: boolean }>("/backup/all", { method: "DELETE" }) }
 
+// ── Backup: 服务器自动快照（管理员） ──
+export interface BackupSnapshot { name: string; date: string; size: number }
+export interface BackupStatus {
+  enabled: boolean
+  backup_time: string
+  interval_days: number
+  keep: number
+  snapshots: BackupSnapshot[]
+}
+export function apiListSnapshots() { return request<BackupStatus>("/backup/snapshots") }
+export function apiCreateSnapshot() {
+  return request<BackupStatus>("/backup/snapshots", { method: "POST" })
+}
+/** 下载服务器快照文件（带鉴权，走 fetch 后触发浏览器下载） */
+export async function apiDownloadSnapshot(name: string) {
+  const token = getToken()
+  const res = await fetch(`${BASE}/backup/snapshots/${encodeURIComponent(name)}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  })
+  if (!res.ok) throw new ApiError(res.status, res.status === 404 ? "快照不存在" : "下载失败")
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = name
+  document.body.appendChild(a) // 挂到 DOM 再触发，Safari/旧 Firefox 对游离 a 点击不生效
+  a.click()
+  a.remove()
+  // 延迟撤销，立即 revoke 会中断 Safari 尚未开始的下载
+  setTimeout(() => URL.revokeObjectURL(url), 10000)
+}
+
 // ── Entries ──
 export interface EntryPayload {
   title?: string
