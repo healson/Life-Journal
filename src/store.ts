@@ -280,7 +280,8 @@ export const store = {
   updateDraft(patch: Partial<JournalEntry>) {
     if (!state.draft) return
     const updated = { ...state.draft, ...patch, updatedAt: new Date().toISOString() }
-    updated.plainText = plainText(patch.content ?? "")
+    // 仅在正文变化时重算：patch 不带 content（如只改标题）时不能清空已有摘要
+    if (patch.content !== undefined) updated.plainText = plainText(patch.content)
     state.draft = updated
   },
 
@@ -310,7 +311,9 @@ export const store = {
     const idx = state.entries.findIndex((e) => e.id === id)
     if (idx < 0) return
     const updated = { ...state.entries[idx], ...patch, updatedAt: new Date().toISOString() }
-    updated.plainText = plainText(patch.content ?? "")
+    // 仅在正文变化时重算：patch 不带 content（如只改标题/标签）时不能清空 plainText，
+    // 否则落库为空会让 AI 检索到该日记却因摘要为空而误报"内容被锁定"
+    if (patch.content !== undefined) updated.plainText = plainText(patch.content)
     state.entries = state.entries.map((e, i) => (i === idx ? updated : e))
     apiUpdateEntry(id, entryPayload(updated)).catch(() => {})
   },
