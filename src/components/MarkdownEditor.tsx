@@ -103,14 +103,21 @@ export function MarkdownEditor({ entryId, readOnly }: Props) {
         class: "tiptap-editor",
       },
       // 粘贴图片：上传后插入编辑区（此前未实现，粘贴无反应）
-      handlePaste: (_view, event) => {
+      handlePaste: (view, event) => {
         const files = event.clipboardData?.files
         if (!files || files.length === 0) return false
         const image = Array.from(files).find((f) => f.type.startsWith("image/"))
         if (!image) return false
         event.preventDefault()
+        // 不能用 editor?.chain()：useEditor 首帧返回 null，闭包捕获首次渲染绑定会永远为 null，
+        // 导致上传成功但静默不插入（表现为粘贴毫无反应）；view 是稳定实例，直接经它插入
         apiUploadImage(ensureImageFile(image))
-          .then((url) => editor?.chain().focus().setImage({ src: url }).run())
+          .then((url) => {
+            const node = view.state.schema.nodes.image?.create({ src: url })
+            if (!node) return
+            view.focus()
+            view.dispatch(view.state.tr.replaceSelectionWith(node))
+          })
           .catch((err) => window.alert((err as Error)?.message || "图片上传失败"))
         return true
       },
