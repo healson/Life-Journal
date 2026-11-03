@@ -10,7 +10,7 @@ from . import auth as auth_mod
 from .auto_backup import start_backup_thread
 from .database import Base, SessionLocal, engine
 from .models import JournalEntry, User
-from .routers import ai, auth, backup, entries, todos, upload
+from .routers import ai, auth, backup, entries, settings, todos, upload
 
 # 建表
 Base.metadata.create_all(bind=engine)
@@ -162,6 +162,7 @@ app.include_router(todos.router)
 app.include_router(backup.router)
 app.include_router(upload.router)
 app.include_router(ai.router)
+app.include_router(settings.router)
 
 
 @app.get("/api/health")

@@ -1,7 +1,6 @@
 """AI 对话：抽取检索条件 → 本地检索日记 → 流式总结（DeepSeek，OpenAI 兼容）。"""
 
 import json
-import os
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -13,16 +12,12 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import or_
 
+from ..ai_config import get_ai_config
 from ..database import SessionLocal
 from ..deps import get_current_user
 from ..models import JournalEntry, User
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
-
-# 与 auth/database 同风格：直接读环境变量（NAS 端配置在 .env，不入库）
-AI_API_KEY = os.environ.get("AI_API_KEY", "")
-AI_BASE_URL = os.environ.get("AI_BASE_URL", "https://api.deepseek.com").rstrip("/")
-AI_MODEL = os.environ.get("AI_MODEL", "deepseek-chat")
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 # 多关键词拆分：空格与中英文标点
@@ -50,7 +45,7 @@ def _sse(event: str, data: dict) -> str:
 
 def _friendly_upstream_error(status_code: int) -> str:
     if status_code == 401:
-        return "AI 服务认证失败：请检查服务器 .env 中的 AI_API_KEY"
+        return "AI 服务认证失败：请在设置 → AI 中检查 API Key"
     if status_code == 429:
         return "AI 服务请求过于频繁，请稍后再试"
     if status_code >= 500:
@@ -177,7 +172,12 @@ def _extract_params(text: str) -> Optional[dict]:
     return {"keywords": keywords, "date_from": date_from, "date_to": date_to}
 
 
-async def _extract_query(client: httpx.AsyncClient, question: str) -> Optional[dict]:
+async def _extract_query(
+    client: httpx.AsyncClient,
+    question: str,
+    base_url: str,
+    model: str,
+) -> Optional[dict]:
     """非流式轻量调用：从问题中抽取关键词与日期范围。失败返回 None。"""
     # 用户时区（容器通常为 UTC，直接 today() 在凌晨到早上 8 点会算成前一天，
     # 导致「今天」类问题抽取错误日期）
@@ -192,9 +192,9 @@ async def _extract_query(client: httpx.AsyncClient, question: str) -> Optional[d
     )
     try:
         resp = await client.post(
-            f"{AI_BASE_URL}/chat/completions",
+            f"{base_url}/chat/completions",
             json={
-                "model": AI_MODEL,
+                "model": model,
                 "messages": [
                     {"role": "system", "content": system},
                     {"role": "user", "content": question},
@@ -220,14 +220,16 @@ async def _stream_summary(
     client: httpx.AsyncClient,
     question: str,
     context: str,
+    base_url: str,
+    model: str,
 ):
     """流式调用 DeepSeek，逐段产出 delta 文本；产出 error 事件时返回错误信息。"""
     try:
         async with client.stream(
             "POST",
-            f"{AI_BASE_URL}/chat/completions",
+            f"{base_url}/chat/completions",
             json={
-                "model": AI_MODEL,
+                "model": model,
                 "messages": [
                     {"role": "system", "content": SYSTEM_SUMMARY},
                     {"role": "user", "content": f"日记检索结果：\n{context}\n\n用户问题：{question}"},
@@ -268,16 +270,18 @@ async def ask(
     """单次 AI 提问（无历史）：抽取 → 检索 → SSE 流式回答。"""
 
     async def event_stream():
-        if not AI_API_KEY:
-            yield _sse("error", {"message": "AI 服务未配置：请在服务器 .env 中设置 AI_API_KEY"})
+        # 每次请求读一次配置：设置页保存后立即生效，无需重启容器
+        cfg = await anyio.to_thread.run_sync(get_ai_config)
+        if not cfg["api_key"]:
+            yield _sse("error", {"message": "AI 服务未配置：请在 设置 → AI 中填写 API Key（或服务器 .env 的 AI_API_KEY）"})
             return
 
         yield _sse("searching", {})
 
-        headers = {"Authorization": f"Bearer {AI_API_KEY}"}
+        headers = {"Authorization": f"Bearer {cfg['api_key']}"}
         async with httpx.AsyncClient(headers=headers, timeout=30.0) as client:
             # 1. 抽取检索条件（失败降级：关键词=原问题、无日期过滤）
-            extracted = await _extract_query(client, body.question)
+            extracted = await _extract_query(client, body.question, cfg["base_url"], cfg["model"])
             if extracted is None:
                 extracted = {
                     "keywords": body.question[:50],
@@ -317,7 +321,7 @@ async def ask(
                 context += json.dumps(index, ensure_ascii=False)
 
             # 3. 流式总结
-            async for kind, data in _stream_summary(client, body.question, context):
+            async for kind, data in _stream_summary(client, body.question, context, cfg["base_url"], cfg["model"]):
                 yield _sse(kind, data)
 
         yield _sse("done", {})

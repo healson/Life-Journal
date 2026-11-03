@@ -96,3 +96,12 @@ class Todo(Base):
     created_at = Column(UTCDateTime, default=utcnow)
 
     owner = relationship("User", back_populates="todos")
+
+
+class Setting(Base):
+    """服务器级键值配置（管理员在设置页保存，优先于 .env 环境变量）。"""
+
+    __tablename__ = "settings"
+
+    key = Column(String(64), primary_key=True)
+    value = Column(String(1024), nullable=False, default="")

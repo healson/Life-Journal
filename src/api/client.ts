@@ -134,6 +134,15 @@ export async function apiDownloadSnapshot(name: string) {
   setTimeout(() => URL.revokeObjectURL(url), 10000)
 }
 
+// ── Settings: AI 助手配置（管理员） ──
+/** source: db=设置页保存 / env=服务器 .env / mixed=混合 */
+export interface AIConfig { base_url: string; api_key: string; model: string; source: "db" | "env" | "mixed" }
+export function apiGetAIConfig() { return request<AIConfig>("/settings/ai") }
+export function apiUpdateAIConfig(cfg: { base_url: string; api_key: string; model: string }) {
+  return request<AIConfig>("/settings/ai", { method: "PUT", body: cfg })
+}
+export function apiResetAIConfig() { return request<AIConfig>("/settings/ai", { method: "DELETE" }) }
+
 // ── Entries ──
 export interface EntryPayload {
   title?: string

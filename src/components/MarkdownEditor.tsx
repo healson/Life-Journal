@@ -14,7 +14,7 @@ import HorizontalRule from "@tiptap/extension-horizontal-rule"
 import { Markdown } from "tiptap-markdown"
 import { ResizableImage } from "../lib/resizableImage"
 import { useEffect, useCallback, useRef, useState } from "react"
-import { CalendarDays, ChevronLeft, ChevronRight, FileDown, FileText, FileType, Pencil, ListTree } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, ExternalLink, FileDown, FileText, FileType, Pencil, ListTree, Copy, Check } from "lucide-react"
 import { ToolBar } from "./ToolBar"
 import { store, DRAFT_ID } from "../store"
 import { apiUploadImage } from "../api/client"
@@ -70,6 +70,12 @@ export function MarkdownEditor({ entryId, readOnly }: Props) {
     [isDraft, entryId],
   )
 
+  // ── 链接点击气泡：编辑态点链接不直接跳走，弹出小气泡确认后打开（setLinkPop 为稳定引用，
+  // 可安全放入 useEditor 首帧闭包；勿在 editorProps 里直接读 linkPop 状态，会捕获旧值）──
+  const [linkPop, setLinkPop] = useState<{ href: string; x: number; y: number } | null>(null)
+  const linkPopRef = useRef<HTMLDivElement>(null)
+  const [linkCopied, setLinkCopied] = useState(false)
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -121,6 +127,19 @@ export function MarkdownEditor({ entryId, readOnly }: Props) {
           .catch((err) => window.alert((err as Error)?.message || "图片上传失败"))
         return true
       },
+      // 点击链接：弹出小气泡（不直接跳转，避免打断编辑）。
+      // 带修饰键的点击（Ctrl/Cmd/Shift）交回浏览器默认行为（新开标签页）。
+      handleClick: (_view, _pos, event) => {
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false
+        const target = event.target as HTMLElement | null
+        const a = target?.closest?.("a")
+        const href = a?.getAttribute("href")
+        if (!a || !href) return false
+        event.preventDefault()
+        const r = a.getBoundingClientRect()
+        setLinkPop({ href, x: r.left + r.width / 2, y: r.bottom + 8 })
+        return true
+      },
     },
     onUpdate: ({ editor }) => {
       const md = editor.storage.markdown?.getMarkdown?.() ?? editor.getHTML()
@@ -160,6 +179,28 @@ export function MarkdownEditor({ entryId, readOnly }: Props) {
     const validatedUrl = /^https?:\/\//i.test(url) ? url : `https://${url}`
     editor.chain().focus().extendMarkRange("link").setLink({ href: validatedUrl }).run()
   }, [editor])
+
+  // 气泡：点外部 / 任意滚动 / Esc 时关闭
+  useEffect(() => {
+    if (!linkPop) return
+    const close = () => setLinkPop(null)
+    const onDown = (e: MouseEvent) => {
+      if (linkPopRef.current?.contains(e.target as Node)) return
+      close()
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close()
+    }
+    document.addEventListener("mousedown", onDown)
+    document.addEventListener("keydown", onKey)
+    // capture：滚动常发生在内层滚动容器，冒泡阶段的 scroll 事件到不了 document
+    document.addEventListener("scroll", close, true)
+    return () => {
+      document.removeEventListener("mousedown", onDown)
+      document.removeEventListener("keydown", onKey)
+      document.removeEventListener("scroll", close, true)
+    }
+  }, [linkPop])
 
   // ── 浮动大纲目录（hooks 必须在下方条件 return 之前）──
   const scrollBoxRef = useRef<HTMLDivElement>(null)
@@ -324,6 +365,80 @@ export function MarkdownEditor({ entryId, readOnly }: Props) {
 
       {/* 底部状态栏 */}
       <EditorStatusBar editor={editor} entry={entry} />
+
+      {/* 链接小气泡：单击正文里的链接弹出，确认后新窗口打开 */}
+      {linkPop && (
+        <LinkBubble
+          href={linkPop.href}
+          x={linkPop.x}
+          y={linkPop.y}
+          copied={linkCopied}
+          popRef={linkPopRef}
+          onCopy={(ok) => {
+            setLinkCopied(ok)
+            if (ok) setTimeout(() => setLinkCopied(false), 1500)
+          }}
+          onClose={() => setLinkPop(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+/**
+ * 链接小气泡：编辑态点击链接后弹出。
+ * 「打开」在新窗口打开链接（不打断编辑），并展示/复制链接地址；点外部、滚动或 Esc 关闭。
+ */
+function LinkBubble({ href, x, y, copied, popRef, onCopy, onClose }: {
+  href: string
+  x: number
+  y: number
+  copied: boolean
+  popRef: React.RefObject<HTMLDivElement | null>
+  onCopy: (ok: boolean) => void
+  onClose: () => void
+}) {
+  // 夹取到视口内：贴边/贴底的链接不让气泡溢出屏幕
+  const W = 280
+  const left = Math.min(Math.max(x, W / 2 + 8), window.innerWidth - W / 2 - 8)
+  const top = Math.min(y, window.innerHeight - 56)
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(href)
+      onCopy(true)
+    } catch {
+      onCopy(false)
+    }
+  }
+  return (
+    <div
+      ref={popRef}
+      className="fixed z-[1300] flex items-center gap-2 w-[280px] max-w-[calc(100vw-16px)] px-2.5 py-2 rounded-xl border border-border-light bg-surface shadow-popover animate-fade-in-up"
+      style={{ left, top, transform: "translate(-50%, 4px)" }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        type="button"
+        onClick={() => {
+          window.open(href, "_blank", "noopener,noreferrer")
+          onClose()
+        }}
+        className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-primary text-white text-xs font-medium hover:bg-primary-dark transition-colors"
+      >
+        <ExternalLink className="w-3.5 h-3.5" />
+        打开
+      </button>
+      <span className="flex-1 min-w-0 truncate text-xs text-text-secondary select-all" title={href}>
+        {href}
+      </span>
+      <button
+        type="button"
+        onClick={copy}
+        title={copied ? "已复制" : "复制链接"}
+        className="flex-shrink-0 p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-hover transition-colors"
+      >
+        {copied ? <Check className="w-3.5 h-3.5 text-primary" /> : <Copy className="w-3.5 h-3.5" />}
+      </button>
     </div>
   )
 }
