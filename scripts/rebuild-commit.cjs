@@ -44,7 +44,9 @@ const git = (args, input) =>
   if ((c.parents || []).length !== 1) throw new Error("仅支持单父提交");
 
   const localHead = git("rev-parse HEAD").trim();
-  const localTree = git(`rev-parse ${localHead}^{tree}`).trim();
+  // 注意：不能裸写 rev-parse <sha>^{tree} —— execSync 在 Windows 走 cmd.exe，^ 会被当转义符吞掉；
+  // 加引号后 cmd 不再解释 ^（cat-file tree 输出的是树内容而非 SHA，不能替代）
+  const localTree = git(`rev-parse "${localHead}^{tree}"`).trim();
   if (localTree !== c.tree.sha) {
     throw new Error(`tree 不一致，拒绝重置。远端=${c.tree.sha} 本地=${localTree}`);
   }
