@@ -14,7 +14,7 @@ import { store, DRAFT_ID } from "./store"
 import { useStore } from "./lib/observer"
 import { useIsMobile } from "./lib/useIsMobile"
 import { useEdgeSwipe } from "./lib/useEdgeSwipe"
-import { cn } from "./lib/utils"
+import { cn, toPlainText } from "./lib/utils"
 import { ChevronLeft, Wand2, Check } from "lucide-react"
 
 type View = "entries" | "todos"
@@ -25,14 +25,6 @@ export default function App() {
   const isMobile = useIsMobile()
   // 移动端：侧栏抽屉开关
   const [drawerOpen, setDrawerOpen] = useState(false)
-  // 移动端编辑页底部「完成 / 转待办」操作条：编辑时默认隐藏，点屏幕显隐切换
-  const [actionsOpen, setActionsOpen] = useState(false)
-
-  // 切换日记 / 视图时收起操作条，避免带到下一篇
-  useEffect(() => {
-    setActionsOpen(false)
-  }, [state.selectedEntryId, view])
-
   // 移动端：从抽屉选了日期/日记后自动收起抽屉
   useEffect(() => {
     if (state.selectedDate || state.selectedEntryId) setDrawerOpen(false)
@@ -176,40 +168,9 @@ export default function App() {
                 <LockedEntryView entry={selectedEntry} />
               </div>
             ) : editing ? (
-              <div
-                className="relative h-full"
-                onClick={(e) => {
-                  // 点正文空白/文字切换底部操作条显隐；点按钮、链接等控件时不切换
-                  const t = e.target as HTMLElement
-                  if (t.closest("button, a, input, textarea, [role='button']")) return
-                  setActionsOpen((v) => !v)
-                }}
-              >
-                <MobileBackButton onClick={goBackToList} />
+              <div className="relative h-full">
+                <MobileDoneButton onDone={goBackToList} readOnly={searchActive} />
                 <MarkdownEditor entryId={state.selectedEntryId!} readOnly={searchActive} />
-                {/* 浮动按钮组：完成（保存并返回列表）+ 转待办；搜索只读时由只读视图提供「编辑」按钮。
-                    编辑时默认隐藏，点一下正文出现，再点一下收起。 */}
-                {editing && !searchActive && actionsOpen && (
-                  <div className="fixed bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-2 z-30 animate-fade-in-up">
-                    <button
-                      onClick={() => {
-                        store.commitDraft()
-                        goBackToList()
-                      }}
-                      className="flex shrink-0 whitespace-nowrap items-center gap-2 px-4 py-2.5 rounded-full bg-accent text-white text-sm font-medium shadow-popover hover:bg-accent-light active:scale-95 transition-all"
-                    >
-                      <Check className="w-4 h-4" />
-                      完成
-                    </button>
-                    <button
-                      onClick={() => store.openConvertDrawer()}
-                      className="flex shrink-0 whitespace-nowrap items-center gap-2 px-4 py-2.5 rounded-full bg-accent text-white text-sm font-medium shadow-popover hover:bg-accent-light active:scale-95 transition-all"
-                    >
-                      <Wand2 className="w-4 h-4" />
-                      转待办
-                    </button>
-                  </div>
-                )}
               </div>
             ) : (
               <EntryList
@@ -281,6 +242,73 @@ export default function App() {
 
       {/* 全局密码输入框 */}
       <PasswordHost />
+    </div>
+  )
+}
+
+/**
+ * 移动端编辑页右上角操作按钮（替代原来的「返回」+ 底部「完成/转待办」操作条）：
+ * - 日记为空（无标题/正文/标签/心情）：点击直接返回列表
+ * - 日记有内容：点击展开二级菜单「完成日记 / 加入待办」
+ * - 搜索只读态：只提供返回
+ */
+function MobileDoneButton({ onDone, readOnly }: { onDone: () => void; readOnly?: boolean }) {
+  const state = useStore()
+  const [open, setOpen] = useState(false)
+  const entry =
+    state.selectedEntryId === DRAFT_ID
+      ? state.draft
+      : state.entries.find((e) => e.id === state.selectedEntryId)
+  const hasContent =
+    !!entry &&
+    (!!entry.title.trim() || !!toPlainText(entry.content).trim() || (entry.tags?.length ?? 0) > 0 || !!entry.mood)
+
+  // 切换日记时收起菜单，避免带到下一篇
+  useEffect(() => {
+    setOpen(false)
+  }, [state.selectedEntryId])
+
+  if (readOnly) return <MobileBackButton onClick={onDone} />
+
+  return (
+    <div className="absolute top-3 right-3 z-40">
+      <button
+        onClick={() => (hasContent ? setOpen((v) => !v) : onDone())}
+        className="relative z-50 flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-surface/90 backdrop-blur border border-border-light text-text-secondary hover:text-text shadow-sm transition-colors"
+      >
+        <Check className="w-4 h-4" />
+        <span className="text-xs">完成</span>
+      </button>
+
+      {open && (
+        <>
+          {/* 点击空白处收起 */}
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-2 z-50 w-40 rounded-xl border border-border-light bg-surface shadow-popover overflow-hidden animate-fade-in-up">
+            <button
+              onClick={() => {
+                setOpen(false)
+                store.commitDraft()
+                onDone()
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-[13px] text-text hover:bg-surface-hover transition-colors"
+            >
+              <Check className="w-4 h-4 text-primary" />
+              完成日记
+            </button>
+            <button
+              onClick={() => {
+                setOpen(false)
+                store.openConvertDrawer()
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-[13px] text-text hover:bg-surface-hover transition-colors"
+            >
+              <Wand2 className="w-4 h-4 text-primary" />
+              加入待办
+            </button>
+          </div>
+        </>
+      )}
     </div>
   )
 }
