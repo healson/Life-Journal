@@ -29,6 +29,7 @@ import {
   ImagePlus,
   Lock,
   RemoveFormatting,
+  MoreHorizontal,
 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { cn } from "../lib/utils"
@@ -58,6 +59,8 @@ interface Props {
   onSetLink: () => void
   entryId?: string | null
   isLocked?: boolean
+  /** 完整面板模式：去掉顶栏吸顶/边框样式，用于浮动「更多」弹出面板 */
+  panel?: boolean
 }
 
 const COLORS = [
@@ -94,7 +97,7 @@ const EMOJI_GROUPS: { label: string; items: string[] }[] = [
   },
 ]
 
-export function ToolBar({ editor, onSetLink, entryId, isLocked = false }: Props) {
+export function ToolBar({ editor, onSetLink, entryId, isLocked = false, panel = false }: Props) {
   const [showColorPicker, setShowColorPicker] = useState(false)
   const [showHighlightPicker, setShowHighlightPicker] = useState(false)
   const [showFontSize, setShowFontSize] = useState(false)
@@ -200,11 +203,20 @@ export function ToolBar({ editor, onSetLink, entryId, isLocked = false }: Props)
   const Divider = () => <div className="w-px h-5 bg-border mx-1" />
 
   return (
-    <div className="sticky top-0 z-10 px-4 py-2 border-b border-border-light bg-surface/95 backdrop-blur flex items-center gap-0.5 flex-wrap max-md:gap-1 max-md:py-1 max-md:px-3">
+    <div
+      className={cn(
+        "flex items-center gap-0.5 flex-wrap",
+        panel
+          ? "px-1.5 py-1.5"
+          : "sticky top-0 z-10 px-4 py-2 border-b border-border-light bg-surface/95 backdrop-blur max-md:gap-1 max-md:py-1 max-md:px-3",
+      )}
+    >
       {/* 拖拽提示 */}
-      <span className="w-6 h-8 flex items-center justify-center text-text-muted/40">
-        <GripVertical className="w-4 h-4" />
-      </span>
+      {!panel && (
+        <span className="w-6 h-8 flex items-center justify-center text-text-muted/40">
+          <GripVertical className="w-4 h-4" />
+        </span>
+      )}
 
       {/* 撤销/重做 */}
       <Btn title="撤销 (Ctrl+Z)" onClick={() => editor.chain().focus().undo().run()}>
@@ -556,6 +568,90 @@ export function ToolBar({ editor, onSetLink, entryId, isLocked = false }: Props)
         }}
       >
         <Wand2 className="w-4 h-4 text-text-muted/50" />
+      </Btn>
+    </div>
+  )
+}
+
+/**
+ * 光标跟随的紧凑工具栏：只放最常用的格式操作，其余收进「更多」完整面板。
+ * 按钮统一 onMouseDown 阻止默认行为，避免点击时编辑器失焦导致浮动栏消失。
+ */
+export function CompactToolBar({ editor, onSetLink, moreOpen, onToggleMore }: {
+  editor: Editor
+  onSetLink: () => void
+  moreOpen: boolean
+  onToggleMore: () => void
+}) {
+  const Btn = ({ active, onClick, title, children }: {
+    active?: boolean
+    onClick: () => void
+    title: string
+    children: React.ReactNode
+  }) => (
+    <button
+      type="button"
+      title={title}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onClick}
+      className={cn(
+        "w-8 h-8 flex items-center justify-center rounded-md text-text-secondary hover:text-text hover:bg-surface-hover transition-colors",
+        active && "bg-primary/15 text-primary hover:bg-primary/20",
+      )}
+    >
+      {children}
+    </button>
+  )
+  const Divider = () => <div className="w-px h-5 bg-border mx-1" />
+
+  return (
+    <div className="flex items-center gap-0.5">
+      <Btn title="加粗 (Ctrl+B)" active={editor.isActive("bold")}
+        onClick={() => editor.chain().focus().toggleBold().run()}>
+        <Bold className="w-4 h-4" />
+      </Btn>
+      <Btn title="斜体 (Ctrl+I)" active={editor.isActive("italic")}
+        onClick={() => editor.chain().focus().toggleItalic().run()}>
+        <Italic className="w-4 h-4" />
+      </Btn>
+      <Btn title="下划线 (Ctrl+U)" active={editor.isActive("underline")}
+        onClick={() => editor.chain().focus().toggleUnderline().run()}>
+        <UnderlineIcon className="w-4 h-4" />
+      </Btn>
+      <Btn title="删除线" active={editor.isActive("strike")}
+        onClick={() => editor.chain().focus().toggleStrike().run()}>
+        <Strikethrough className="w-4 h-4" />
+      </Btn>
+
+      <Divider />
+
+      <Btn title="一级标题 (#)" active={editor.isActive("heading", { level: 1 })}
+        onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>
+        <Heading1 className="w-4 h-4" />
+      </Btn>
+      <Btn title="二级标题 (##)" active={editor.isActive("heading", { level: 2 })}
+        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
+        <Heading2 className="w-4 h-4" />
+      </Btn>
+      <Btn title="三级标题 (###)" active={editor.isActive("heading", { level: 3 })}
+        onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>
+        <Heading3 className="w-4 h-4" />
+      </Btn>
+
+      <Divider />
+
+      <Btn title="高亮" active={editor.isActive("highlight")}
+        onClick={() => editor.chain().focus().toggleHighlight({ color: "#FEF08A" }).run()}>
+        <Highlighter className="w-4 h-4" />
+      </Btn>
+      <Btn title="链接" active={editor.isActive("link")} onClick={onSetLink}>
+        <LinkIcon className="w-4 h-4" />
+      </Btn>
+
+      <Divider />
+
+      <Btn title="更多格式" active={moreOpen} onClick={onToggleMore}>
+        <MoreHorizontal className="w-4 h-4" />
       </Btn>
     </div>
   )

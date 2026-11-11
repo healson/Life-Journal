@@ -82,21 +82,7 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- 左下角服务器设置入口 -->
-    <ImageButton
-        android:id="@+id/gearButton"
-        android:layout_width="46dp"
-        android:layout_height="46dp"
-        android:layout_gravity="bottom|start"
-        android:layout_marginStart="16dp"
-        android:layout_marginBottom="16dp"
-        android:background="@drawable/bg_gear"
-        android:contentDescription="@string/gear_desc"
-        android:elevation="4dp"
-        android:padding="11dp"
-        android:src="@drawable/ic_gear"
-        android:tint="@color/textSecondary"
-        android:visibility="gone" />
+    <!-- 服务器设置入口已合并进 App 内「设置 → 账号」，此处不再悬浮齿轮按钮 -->
 
     <!-- 首启服务器配置页 -->
     <ScrollView

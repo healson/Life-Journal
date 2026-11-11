@@ -16,8 +16,8 @@ android {
         applicationId "com.healson.lifejournal"
         minSdk 29
         targetSdk 34
-        versionCode 5
-        versionName "0.6.0"
+        versionCode 7
+        versionName "0.6.9"
     }
 
     signingConfigs {

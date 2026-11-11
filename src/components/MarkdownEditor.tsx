@@ -13,9 +13,9 @@ import Link from "@tiptap/extension-link"
 import HorizontalRule from "@tiptap/extension-horizontal-rule"
 import { Markdown } from "tiptap-markdown"
 import { ResizableImage } from "../lib/resizableImage"
-import { useEffect, useCallback, useRef, useState } from "react"
+import { useEffect, useCallback, useLayoutEffect, useRef, useState } from "react"
 import { CalendarDays, ChevronLeft, ChevronRight, ExternalLink, FileDown, FileText, FileType, Pencil, ListTree, Copy, Check } from "lucide-react"
-import { ToolBar } from "./ToolBar"
+import { ToolBar, CompactToolBar } from "./ToolBar"
 import { store, DRAFT_ID } from "../store"
 import { apiUploadImage } from "../api/client"
 import { useStore } from "../lib/observer"
@@ -297,6 +297,105 @@ export function MarkdownEditor({ entryId, readOnly }: Props) {
     setActiveOutlineId(item.id)
   }
 
+  // ── 光标跟随的浮动工具栏 ──
+  const barRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const [barShown, setBarShown] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
+  // barPos 同时记录编辑区列的实际边界，用于「更多」面板的水平对齐
+  const [barPos, setBarPos] = useState<{
+    left: number; top: number; barW: number; barH: number; colLeft: number; colWidth: number
+  } | null>(null)
+
+  const updateBarPos = useCallback(() => {
+    if (!editor || !barRef.current) return
+    const box = scrollBoxRef.current
+    if (!box) return
+    const b = box.getBoundingClientRect()
+    const barW = barRef.current.offsetWidth
+    const barH = barRef.current.offsetHeight
+    // 用工具栏自身的视口坐标 → 固定定位：水平居中于光标，优先放在光标上方一行
+    const coords = editor.view.coordsAtPos(editor.state.selection.head)
+    let left = coords.left - barW / 2
+    left = Math.min(Math.max(left, b.left + 8), Math.max(b.left + 8, b.right - barW - 8))
+    let top = coords.top - barH - 8
+    if (top < b.top + 8) top = coords.bottom + 8
+    setBarPos((prev) => {
+      const same = prev &&
+        Math.abs(prev.left - left) < 0.5 && Math.abs(prev.top - top) < 0.5 &&
+        prev.barW === barW && prev.barH === barH &&
+        Math.abs(prev.colLeft - b.left) < 0.5 && Math.abs(prev.colWidth - b.width) < 0.5
+      return same ? prev : { left, top, barW, barH, colLeft: b.left, colWidth: b.width }
+    })
+  }, [editor])
+
+  // 光标移动 / 内容变化 / 窗口尺寸 / 编辑区滚动时重新定位
+  useEffect(() => {
+    if (!editor) return
+    const on = () => {
+      // 兜底：个别环境下 focus 事件不触发，光标一变化只要编辑器处于聚焦态就显示工具栏
+      if (editor.isFocused) setBarShown(true)
+      updateBarPos()
+    }
+    editor.on("selectionUpdate", on)
+    editor.on("update", on)
+    window.addEventListener("resize", on)
+    const box = scrollBoxRef.current
+    box?.addEventListener("scroll", on, { passive: true })
+    return () => {
+      editor.off("selectionUpdate", on)
+      editor.off("update", on)
+      window.removeEventListener("resize", on)
+      box?.removeEventListener("scroll", on)
+    }
+  }, [editor, updateBarPos])
+
+  // 聚焦显示、失焦隐藏（工具栏自身 onMouseDown 已阻止默认行为，点按钮不会触发失焦）
+  useEffect(() => {
+    if (!editor) return
+    const onFocus = () => setBarShown(true)
+    const onBlur = () => {
+      setBarShown(false)
+      setMoreOpen(false)
+    }
+    editor.on("focus", onFocus)
+    editor.on("blur", onBlur)
+    return () => {
+      editor.off("focus", onFocus)
+      editor.off("blur", onBlur)
+    }
+  }, [editor])
+
+  // 首次显示后（及切换日记后）测量并定位
+  useLayoutEffect(() => {
+    if (barShown) updateBarPos()
+  }, [barShown, updateBarPos, entryId])
+
+  // 点「更多」外部 / Esc 关闭完整面板
+  useEffect(() => {
+    if (!moreOpen) return
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node
+      if (barRef.current?.contains(t) || panelRef.current?.contains(t)) return
+      setMoreOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMoreOpen(false)
+    }
+    document.addEventListener("mousedown", onDown)
+    document.addEventListener("keydown", onKey)
+    return () => {
+      document.removeEventListener("mousedown", onDown)
+      document.removeEventListener("keydown", onKey)
+    }
+  }, [moreOpen])
+
+  // 切换日记时收起大纲目录，避免上一篇的展开状态带到下一篇
+  useEffect(() => {
+    setOutlineOpen(false)
+    setActiveOutlineId(null)
+  }, [entryId])
+
   if (!editor) return null
   if (!entry) return null
 
@@ -330,23 +429,12 @@ export function MarkdownEditor({ entryId, readOnly }: Props) {
       <div ref={scrollBoxRef} onScroll={handleScroll} className="flex-1 overflow-y-auto max-md:pb-28">
         <div className={cn(
           "max-w-3xl mx-auto",
-          // 右侧浮动大纲（把手/面板）悬浮在编辑区右缘，窄编辑列下会盖住正文行尾，
-          // 表现为"文字点不动、不能编辑"。按大纲状态给正文预留右侧空间，杜绝遮挡。
+          // 大纲把手固定浮在编辑区右缘，只给把手留出很窄的安全边距，
+          // 避免把手压住正文行尾导致"文字点不动"；展开的目录面板完全浮在上层，不再挤占正文宽度。
           outline.length > 0 && "md:pr-10",
-          outlineOpen && "md:pr-56",
         )}>
           {/* 标题 + 心情 + 标签 + 自定义日期 */}
           <EntryMetaBar entry={entry} onSave={save} />
-
-          {/* 工具栏（紧跟 meta，贴近打字区） */}
-          <div className="relative">
-            <ToolBar
-              editor={editor}
-              onSetLink={setLink}
-              entryId={entryId}
-              isLocked={!!entry?.isLocked}
-            />
-          </div>
 
           <EditorContent editor={editor} />
         </div>
@@ -361,6 +449,50 @@ export function MarkdownEditor({ entryId, readOnly }: Props) {
           onToggle={() => setOutlineOpen((v) => !v)}
           onJump={jumpTo}
         />
+      )}
+
+      {/* 光标跟随的浮动工具栏：聚焦时出现，跟着光标位置移动 */}
+      {barShown && (
+        <div
+          ref={barRef}
+          className="fixed z-40 flex items-center rounded-full border border-border bg-surface/95 backdrop-blur px-1.5 py-1 shadow-popover"
+          style={{ left: barPos?.left ?? -9999, top: barPos?.top ?? -9999 }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <CompactToolBar
+            editor={editor}
+            onSetLink={setLink}
+            moreOpen={moreOpen}
+            onToggleMore={() => setMoreOpen((v) => !v)}
+          />
+        </div>
+      )}
+
+      {/* 「更多」完整工具栏面板：按编辑区列宽对齐，光标附近上下翻转 */}
+      {moreOpen && barPos && (
+        <div
+          ref={panelRef}
+          className="fixed z-40 rounded-xl border border-border bg-surface shadow-popover"
+          style={(() => {
+            const width = Math.min(680, barPos.colWidth - 16)
+            const left = barPos.colLeft + (barPos.colWidth - width) / 2
+            const spaceAbove = barPos.top - 8
+            const spaceBelow = window.innerHeight - (barPos.top + barPos.barH) - 8
+            // 上方放不下且下方更宽裕时改为向下展开
+            return spaceAbove >= 120 || spaceBelow < 120
+              ? { left, width, bottom: window.innerHeight - barPos.top + 8 }
+              : { left, width, top: barPos.top + barPos.barH + 8 }
+          })()}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <ToolBar
+            editor={editor}
+            onSetLink={setLink}
+            entryId={entryId}
+            isLocked={!!entry?.isLocked}
+            panel
+          />
+        </div>
       )}
 
       {/* 底部状态栏 */}
@@ -460,7 +592,7 @@ function OutlinePanel({ items, activeId, open, onToggle, onJump }: {
         type="button"
         onClick={onToggle}
         title="展开大纲目录"
-        className="hidden md:flex absolute right-3 top-1/2 -translate-y-1/2 z-20 flex-col items-center gap-1.5 px-1.5 py-3 rounded-l-xl border border-r-0 border-border-light bg-surface/95 backdrop-blur text-text-muted hover:text-primary hover:border-primary/30 transition-colors shadow-card"
+        className="hidden md:flex absolute right-3 top-1/2 -translate-y-1/2 z-50 flex-col items-center gap-1.5 px-1.5 py-3 rounded-l-xl border border-r-0 border-border-light bg-surface/95 backdrop-blur text-text-muted hover:text-primary hover:border-primary/30 transition-colors shadow-card"
       >
         <ListTree className="w-4 h-4" />
         <span className="text-[11px] leading-tight [writing-mode:vertical-rl] tracking-widest">目录</span>
@@ -469,7 +601,7 @@ function OutlinePanel({ items, activeId, open, onToggle, onJump }: {
   }
 
   return (
-    <div className="hidden md:flex absolute right-3 top-3 bottom-16 z-20 w-52 flex-col rounded-xl border border-border-light bg-surface/95 backdrop-blur shadow-card animate-fade-in-up">
+    <div className="hidden md:flex absolute right-3 top-3 bottom-16 z-50 w-52 flex-col rounded-xl border border-border-light bg-surface/95 backdrop-blur shadow-popover animate-fade-in-up">
       {/* 头部 */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border-light">
         <span className="flex items-center gap-1.5 text-xs font-semibold text-text">

@@ -25,6 +25,13 @@ export default function App() {
   const isMobile = useIsMobile()
   // 移动端：侧栏抽屉开关
   const [drawerOpen, setDrawerOpen] = useState(false)
+  // 移动端编辑页底部「完成 / 转待办」操作条：编辑时默认隐藏，点屏幕显隐切换
+  const [actionsOpen, setActionsOpen] = useState(false)
+
+  // 切换日记 / 视图时收起操作条，避免带到下一篇
+  useEffect(() => {
+    setActionsOpen(false)
+  }, [state.selectedEntryId, view])
 
   // 移动端：从抽屉选了日期/日记后自动收起抽屉
   useEffect(() => {
@@ -169,12 +176,21 @@ export default function App() {
                 <LockedEntryView entry={selectedEntry} />
               </div>
             ) : editing ? (
-              <div className="relative h-full">
+              <div
+                className="relative h-full"
+                onClick={(e) => {
+                  // 点正文空白/文字切换底部操作条显隐；点按钮、链接等控件时不切换
+                  const t = e.target as HTMLElement
+                  if (t.closest("button, a, input, textarea, [role='button']")) return
+                  setActionsOpen((v) => !v)
+                }}
+              >
                 <MobileBackButton onClick={goBackToList} />
                 <MarkdownEditor entryId={state.selectedEntryId!} readOnly={searchActive} />
-                {/* 浮动按钮组：完成（保存并返回列表）+ 转待办；搜索只读时由只读视图提供「编辑」按钮 */}
-                {editing && !searchActive && (
-                  <div className="fixed bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-2 z-30">
+                {/* 浮动按钮组：完成（保存并返回列表）+ 转待办；搜索只读时由只读视图提供「编辑」按钮。
+                    编辑时默认隐藏，点一下正文出现，再点一下收起。 */}
+                {editing && !searchActive && actionsOpen && (
+                  <div className="fixed bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-2 z-30 animate-fade-in-up">
                     <button
                       onClick={() => {
                         store.commitDraft()

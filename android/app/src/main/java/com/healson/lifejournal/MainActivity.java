@@ -68,7 +68,6 @@ public class MainActivity extends AppCompatActivity {
     private WebView webView;
     private View setupView;
     private View errorView;
-    private View gearButton;
     private TextView errorMsg;
     private ProgressBar progressBar;
     private SharedPreferences prefs;
@@ -91,14 +90,12 @@ public class MainActivity extends AppCompatActivity {
         webView = findViewById(R.id.webView);
         setupView = findViewById(R.id.setupView);
         errorView = findViewById(R.id.errorView);
-        gearButton = findViewById(R.id.gearButton);
         errorMsg = findViewById(R.id.errorMsg);
         progressBar = findViewById(R.id.progressBar);
 
         setupWebView();
 
         findViewById(R.id.btnConnect).setOnClickListener(v -> connectFromSetup());
-        gearButton.setOnClickListener(v -> showServerDialog());
         findViewById(R.id.btnRetry).setOnClickListener(v -> {
             errorView.setVisibility(View.GONE);
             progressBar.setVisibility(View.VISIBLE);
@@ -139,7 +136,6 @@ public class MainActivity extends AppCompatActivity {
     private void showSetup() {
         setupView.setVisibility(View.VISIBLE);
         webView.setVisibility(View.INVISIBLE);
-        gearButton.setVisibility(View.GONE);
         // 登录页留空：无预置、无提示
         ((EditText) findViewById(R.id.inputHost)).setText("");
     }
@@ -291,6 +287,8 @@ public class MainActivity extends AppCompatActivity {
 
         // 待办 → 系统日历同步桥（前端检测 window.LifeJournalCalendar 判断是否可用）
         webView.addJavascriptInterface(new CalendarJsBridge(), "LifeJournalCalendar");
+        // App 级能力桥（前端检测 window.LifeJournalApp）：设置里打开原生服务器设置
+        webView.addJavascriptInterface(new AppJsBridge(), "LifeJournalApp");
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -315,7 +313,6 @@ public class MainActivity extends AppCompatActivity {
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 if (request.isForMainFrame()) {
                     errorView.setVisibility(View.VISIBLE);
-                    gearButton.setVisibility(View.GONE);
                     errorMsg.setText("无法连接到 " + baseUrl() + "\n请确认 NAS 已启动、地址与手机在同一网络");
                 }
             }
@@ -331,9 +328,6 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 progressBar.setVisibility(View.GONE);
-                if (errorView.getVisibility() != View.VISIBLE) {
-                    gearButton.setVisibility(View.VISIBLE);
-                }
                 // 空白页诊断：加载完成 2000ms 后判定，避免慢设备 React 未挂载完误报
                 scheduleBlankCheck(view, 2000);
             }
@@ -346,7 +340,6 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     if (errUrl != null && errUrl.startsWith(baseUrl())) {
                         errorView.setVisibility(View.VISIBLE);
-                        gearButton.setVisibility(View.GONE);
                         progressBar.setVisibility(View.GONE);
                         errorMsg.setText("HTTPS 证书错误：" + reason + "\n地址：" + errUrl);
                     }
@@ -586,7 +579,6 @@ public class MainActivity extends AppCompatActivity {
                         // 0 = 挂载点为空；-1 = 无挂载点（非预期页面）
                         if (!"0".equals(value) && !"-1".equals(value)) return;
                         errorView.setVisibility(View.VISIBLE);
-                        gearButton.setVisibility(View.GONE);
                         progressBar.setVisibility(View.GONE);
                         StringBuilder sb = new StringBuilder();
                         sb.append("页面加载成功，但内容为空白\n地址：").append(view.getUrl());
@@ -652,6 +644,24 @@ public class MainActivity extends AppCompatActivity {
         public String clearTodos() {
             if (!CalendarSync.hasPermission(MainActivity.this)) return "no_permission";
             return CalendarSync.clearCalendar(MainActivity.this) ? "ok" : "error";
+        }
+    }
+
+    /**
+     * 注入为 window.LifeJournalApp。方法运行在 WebView 私有线程，
+     * 需要弹窗时必须切回 UI 线程。
+     */
+    private final class AppJsBridge {
+        /** 当前生效的服务器地址（协议://主机:端口）。 */
+        @JavascriptInterface
+        public String getServerUrl() {
+            return baseUrl();
+        }
+
+        /** 打开原生「服务器设置」对话框（保存后自动重连）。 */
+        @JavascriptInterface
+        public void openServerSettings() {
+            runOnUiThread(() -> showServerDialog());
         }
     }
 

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import { createPortal } from "react-dom"
 import {
   X, Check, Palette, Database, User, Download, Upload, Trash2, KeyRound,
-  UserPlus, Shield, RefreshCw, Copy, CalendarClock, CalendarSync, Archive, Bot,
+  UserPlus, Shield, RefreshCw, Copy, CalendarClock, CalendarSync, Archive, Bot, Server,
 } from "lucide-react"
 import { THEMES, applyTheme, getStoredTheme, type ThemeId } from "../lib/theme"
 import { cn, formatDate } from "../lib/utils"
@@ -30,6 +30,18 @@ type Tab = "appearance" | "data" | "account" | "ai"
 export function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [theme, setTheme] = useState<ThemeId>("sage")
   const [tab, setTab] = useState<Tab>("appearance")
+
+  // APK 壳注入的桥（window.LifeJournalApp）：服务器地址设置已合并进本弹窗
+  const appBridge = (window as unknown as Record<string, any>).LifeJournalApp as
+    | { getServerUrl?: () => string; openServerSettings?: () => void }
+    | undefined
+  const [serverUrl] = useState(() => {
+    try {
+      return appBridge?.getServerUrl?.() ?? ""
+    } catch {
+      return ""
+    }
+  })
 
   // 数据
   const [busy, setBusy] = useState<"export" | "import" | "clear" | "snapshot" | null>(null)
@@ -820,6 +832,27 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                 </button>
               </form>
             </div>
+
+            {/* 服务器（仅 APK 壳内显示）：原来的悬浮齿轮入口合并到这里 */}
+            {appBridge && (
+              <div className="pt-4 border-t border-border-light">
+                <div className="text-[11px] font-semibold text-text-muted uppercase tracking-widest mb-3">
+                  服务器
+                </div>
+                <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-surface-hover">
+                  <Server className="w-4 h-4 text-text-muted flex-shrink-0" />
+                  <span className="text-sm text-text flex-1 truncate">{serverUrl || "未设置"}</span>
+                  <button
+                    type="button"
+                    onClick={() => appBridge.openServerSettings?.()}
+                    className="flex-shrink-0 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-medium hover:bg-primary-light transition-colors"
+                  >
+                    修改
+                  </button>
+                </div>
+                <p className="text-xs text-text-muted mt-2">保存后 App 会重新连接该地址。</p>
+              </div>
+            )}
 
             {/* 用户管理（管理员） */}
             {isAdmin && (
