@@ -455,7 +455,7 @@ export function MarkdownEditor({ entryId, readOnly }: Props) {
       {barShown && (
         <div
           ref={barRef}
-          className="fixed z-40 flex items-center rounded-full border border-border bg-surface/95 backdrop-blur px-1.5 py-1 shadow-popover"
+          className="fixed z-40 flex items-center rounded-full border border-border bg-surface/95 backdrop-blur px-1.5 py-1 shadow-popover max-w-[calc(100vw-16px)]"
           style={{ left: barPos?.left ?? -9999, top: barPos?.top ?? -9999 }}
           onMouseDown={(e) => e.preventDefault()}
         >
