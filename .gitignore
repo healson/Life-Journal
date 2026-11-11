@@ -31,6 +31,10 @@ dist-ssr
 !.env.example
 # GitHub Token（本地文件，勿提交）
 gh_pat.txt
+# NAS 等服务器凭据（本地文件，勿提交）
+ssh.txt
+*.pem
+id_rsa*
 
 # 数据库与数据卷
 data/

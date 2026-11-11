@@ -2,6 +2,7 @@ import type { JournalEntry, Todo } from "./types"
 import { emitChange } from "./lib/events"
 import { resetLastActivity, startIdleTimer, stopIdleTimer } from "./lib/idle"
 import { scheduleCalendarSync } from "./lib/calendarBridge"
+import { toPlainText } from "./lib/utils"
 import {
   apiCompleteTodo, apiCreateEntry, apiCreateTodo, apiDeleteEntry, apiDeleteTodo,
   apiListEntries, apiListTodos, apiLockEntry, apiLogin, apiMe, apiRegister,
@@ -112,14 +113,6 @@ function todoPayload(t: Partial<Todo>) {
     remind_at: t.remindAt ?? null,
     entry_id: t.entryId != null ? Number(t.entryId) : null,
   }
-}
-
-function plainText(md: string): string {
-  return md
-    .replace(/<[^>]*>/g, "")             // 先剥掉内联 HTML 标签（如 <span style="...">）
-    .replace(/[#*`>\-_!()\[\]]/g, "")    // 再清掉常见 Markdown 语法符号
-    .replace(/\n+/g, " ")
-    .trim()
 }
 
 function genId() {
@@ -239,7 +232,7 @@ export const store = {
       id: tmpId,
       title: data.title ?? "",
       content: data.content ?? "",
-      plainText: data.plainText ?? plainText(data.content ?? ""),
+      plainText: data.plainText ?? toPlainText(data.content ?? ""),
       mood: data.mood,
       tags: data.tags ?? [],
       entryType: data.entryType ?? "daily",
@@ -281,7 +274,7 @@ export const store = {
     if (!state.draft) return
     const updated = { ...state.draft, ...patch, updatedAt: new Date().toISOString() }
     // 仅在正文变化时重算：patch 不带 content（如只改标题）时不能清空已有摘要
-    if (patch.content !== undefined) updated.plainText = plainText(patch.content)
+    if (patch.content !== undefined) updated.plainText = toPlainText(patch.content)
     state.draft = updated
   },
 
@@ -313,7 +306,7 @@ export const store = {
     const updated = { ...state.entries[idx], ...patch, updatedAt: new Date().toISOString() }
     // 仅在正文变化时重算：patch 不带 content（如只改标题/标签）时不能清空 plainText，
     // 否则落库为空会让 AI 检索到该日记却因摘要为空而误报"内容被锁定"
-    if (patch.content !== undefined) updated.plainText = plainText(patch.content)
+    if (patch.content !== undefined) updated.plainText = toPlainText(patch.content)
     state.entries = state.entries.map((e, i) => (i === idx ? updated : e))
     apiUpdateEntry(id, entryPayload(updated)).catch(() => {})
   },

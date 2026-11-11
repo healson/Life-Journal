@@ -63,7 +63,8 @@ public class MainActivity extends AppCompatActivity {
     private static final String DEFAULT_SCHEME = "http";
     private static final int REQ_CHOOSE_FILE = 1101;
     private static final int REQ_CALENDAR_PERM = 1102;
-    private static final String DEFAULT_PORT = "8080";
+    // 与 NAS 上 docker-compose 的宿主机端口保持一致（8080 已被其他服务占用）
+    private static final String DEFAULT_PORT = "8280";
 
     private WebView webView;
     private View setupView;
@@ -211,7 +212,7 @@ public class MainActivity extends AppCompatActivity {
     /**
      * 支持两种输入（单一地址框，无端口栏）：
      * 1. 完整 URL（如 https://life.yilei.fun:10086）→ 协议与端口以输入为准，无端口则按协议默认端口；
-     * 2. 仅域名/IP（可带 :端口）→ 协议沿用已保存值，未写端口时默认 8080（本项目 NAS 映射端口）。
+     * 2. 仅域名/IP（可带 :端口）→ 协议沿用已保存值，未写端口时默认 8280（本项目 NAS 映射端口）。
      */
     private ServerInput parseServer(String raw) {
         String h = raw == null ? "" : raw.trim();

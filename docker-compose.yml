@@ -23,4 +23,5 @@ services:
       - api
     restart: unless-stopped
     ports:
-      - "8080:80"
+      # 宿主机端口按实际环境调整；当前 NAS 上 8080 已被其他服务占用，本项目用 8280
+      - "8280:80"

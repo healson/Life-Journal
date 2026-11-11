@@ -24,35 +24,19 @@ import {
   Redo,
   Wand2,
   GripVertical,
-  SmilePlus,
   Type,
   ImagePlus,
   Lock,
   RemoveFormatting,
-  MoreHorizontal,
 } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { cn } from "../lib/utils"
-import { FONT_SIZES, currentFontSize } from "../lib/fontSize"
+import { currentFontSize } from "../lib/fontSize"
+import { useClickOutside } from "../lib/useClickOutside"
 import { apiUploadImage } from "../api/client"
 import { store, DRAFT_ID } from "../store"
 import { passwordDialog } from "./PasswordDialog"
-
-/** 点击 ref 容器外部时触发 onClose（用于弹层点击外部自动收起） */
-function useClickOutside(
-  ref: React.RefObject<HTMLElement | null>,
-  onClose: () => void,
-) {
-  const onCloseRef = useRef(onClose)
-  onCloseRef.current = onClose
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onCloseRef.current()
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [ref])
-}
+import { COLORS, HIGHLIGHT_COLORS, ColorPalette, EmojiControl, FontSizeControl } from "./toolbar/pickers"
 
 interface Props {
   editor: Editor
@@ -62,40 +46,6 @@ interface Props {
   /** 完整面板模式：去掉顶栏吸顶/边框样式，用于浮动「更多」弹出面板 */
   panel?: boolean
 }
-
-const COLORS = [
-  "#1C1917", "#DC2626", "#F87171", "#F59E0B", "#FBBF24",
-  "#16A34A", "#22C55E", "#0EA5E9", "#6366F1", "#A855F7",
-  "#EC4899", "#78716C",
-]
-
-const HIGHLIGHT_COLORS = [
-  "#FEF08A", "#FECACA", "#BBF7D0", "#BAE6FD", "#DDD6FE", "#FBCFE8",
-]
-
-// 精选治愈系 emoji —— 场景：日记情绪表达 / 心情填充（OpenMoji ♥ 风格取向）
-const EMOJI_GROUPS: { label: string; items: string[] }[] = [
-  {
-    label: "心情",
-    items: ["😊", "😄", "☺️", "🥰", "😌", "🤗", "😤", "😴", "😪", "😭", "🥺", "😜"],
-  },
-  {
-    label: "自然",
-    items: ["🌸", "🌺", "🌻", "🌿", "🍀", "🌱", "🌈", "☀️", "🌙", "⭐", "✨", "🌊"],
-  },
-  {
-    label: "爱心",
-    items: ["❤️", "🧡", "💛", "💚", "💙", "💜", "💖", "💓", "💞", "💕", "🤍", "💘"],
-  },
-  {
-    label: "陪伴",
-    items: ["🐱", "🐶", "🐰", "🦋", "🐢", "🐧", "🐿️", "🦜", "🦄", "🐻", "🐾", "🦩"],
-  },
-  {
-    label: "日常",
-    items: ["🧸", "🎀", "📖", "☕", "🎧", "🕯️", "🌷", "🏝️", "🛁", "🧺", "🎵", "🍩"],
-  },
-]
 
 export function ToolBar({ editor, onSetLink, entryId, isLocked = false, panel = false }: Props) {
   const [showColorPicker, setShowColorPicker] = useState(false)
@@ -569,245 +519,6 @@ export function ToolBar({ editor, onSetLink, entryId, isLocked = false, panel = 
       >
         <Wand2 className="w-4 h-4 text-text-muted/50" />
       </Btn>
-    </div>
-  )
-}
-
-/**
- * 光标跟随的紧凑工具栏：只放最常用的格式操作，其余收进「更多」完整面板。
- * 按钮统一 onMouseDown 阻止默认行为，避免点击时编辑器失焦导致浮动栏消失。
- */
-export function CompactToolBar({ editor, onSetLink, moreOpen, onToggleMore }: {
-  editor: Editor
-  onSetLink: () => void
-  moreOpen: boolean
-  onToggleMore: () => void
-}) {
-  const Btn = ({ active, onClick, title, className, children }: {
-    active?: boolean
-    onClick: () => void
-    title: string
-    className?: string
-    children: React.ReactNode
-  }) => (
-    <button
-      type="button"
-      title={title}
-      onMouseDown={(e) => e.preventDefault()}
-      onClick={onClick}
-      className={cn(
-        "w-8 h-8 shrink-0 flex items-center justify-center rounded-md text-text-secondary hover:text-text hover:bg-surface-hover transition-colors",
-        active && "bg-primary/15 text-primary hover:bg-primary/20",
-        className,
-      )}
-    >
-      {children}
-    </button>
-  )
-  const Divider = () => <div className="w-px h-5 bg-border mx-1 shrink-0" />
-
-  return (
-    <div className="flex items-center gap-0.5 min-w-0">
-      {/* 格式按钮区：窄屏可横向滑动，保证末尾「更多」始终可见 */}
-      <div className="flex items-center gap-0.5 min-w-0 overflow-x-auto no-scrollbar">
-        <Btn title="加粗 (Ctrl+B)" active={editor.isActive("bold")}
-          onClick={() => editor.chain().focus().toggleBold().run()}>
-          <Bold className="w-4 h-4" />
-        </Btn>
-        <Btn title="斜体 (Ctrl+I)" active={editor.isActive("italic")}
-          onClick={() => editor.chain().focus().toggleItalic().run()}>
-          <Italic className="w-4 h-4" />
-        </Btn>
-        <Btn title="下划线 (Ctrl+U)" active={editor.isActive("underline")}
-          onClick={() => editor.chain().focus().toggleUnderline().run()}>
-          <UnderlineIcon className="w-4 h-4" />
-        </Btn>
-        <Btn title="删除线" active={editor.isActive("strike")} className="max-[439px]:hidden"
-          onClick={() => editor.chain().focus().toggleStrike().run()}>
-          <Strikethrough className="w-4 h-4" />
-        </Btn>
-
-        <Divider />
-
-        <Btn title="一级标题 (#)" active={editor.isActive("heading", { level: 1 })}
-          onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>
-          <Heading1 className="w-4 h-4" />
-        </Btn>
-        <Btn title="二级标题 (##)" active={editor.isActive("heading", { level: 2 })}
-          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
-          <Heading2 className="w-4 h-4" />
-        </Btn>
-        <Btn title="三级标题 (###)" active={editor.isActive("heading", { level: 3 })} className="max-[399px]:hidden"
-          onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>
-          <Heading3 className="w-4 h-4" />
-        </Btn>
-
-        <Divider />
-
-        <Btn title="高亮" active={editor.isActive("highlight")} className="max-[359px]:hidden"
-          onClick={() => editor.chain().focus().toggleHighlight({ color: "#FEF08A" }).run()}>
-          <Highlighter className="w-4 h-4" />
-        </Btn>
-        <Btn title="链接" active={editor.isActive("link")} onClick={onSetLink}>
-          <LinkIcon className="w-4 h-4" />
-        </Btn>
-      </div>
-
-      <Divider />
-
-      <Btn title="更多格式" active={moreOpen} onClick={onToggleMore}>
-        <MoreHorizontal className="w-4 h-4" />
-      </Btn>
-    </div>
-  )
-}
-
-function ColorPalette({
-  colors,
-  onPick,
-  onClear,
-}: {
-  colors: string[]
-  onPick: (c: string) => void
-  onClear: () => void
-}) {
-  return (
-    <div className="absolute left-0 top-full mt-1 w-[180px] p-2.5 rounded-xl bg-surface border border-border shadow-popover z-50 animate-fade-in-up">
-      <div className="grid grid-cols-6 gap-1.5">
-        {colors.map((c) => (
-          <button
-            key={c}
-            type="button"
-            onClick={() => onPick(c)}
-            className="aspect-square w-full rounded-lg border border-black/10 shadow-sm hover:scale-110 hover:ring-2 hover:ring-primary/40 transition-transform"
-            style={{ backgroundColor: c }}
-          />
-        ))}
-      </div>
-      <button
-        type="button"
-        onClick={onClear}
-        className="mt-2 w-full text-xs text-text-muted hover:text-text py-1.5 border-t border-border-light"
-      >
-        清除颜色
-      </button>
-    </div>
-  )
-}
-
-function FontSizeControl({
-  current,
-  onPick,
-  onClear,
-}: {
-  current: number | null
-  onPick: (size: string) => void
-  onClear: () => void
-}) {
-  return (
-    <div className="absolute left-0 top-full mt-2 w-[150px] p-2.5 rounded-xl bg-surface border border-border shadow-popover z-50 animate-fade-in-up">
-      <div className="text-[10px] font-medium text-text-muted px-1 mb-1.5">字号（px）</div>
-      <div className="grid grid-cols-4 gap-1.5">
-        {FONT_SIZES.map((s) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => onPick(`${s}px`)}
-            style={{ fontSize: Math.min(s, 20) }}
-            className={cn(
-              "h-8 flex items-center justify-center rounded-lg text-text-secondary hover:bg-primary/10 hover:text-primary transition-colors",
-              current === s && "bg-primary/15 text-primary font-semibold",
-            )}
-            title={`${s}px`}
-          >
-            {s}
-          </button>
-        ))}
-      </div>
-      <button
-        type="button"
-        onClick={onClear}
-        className="mt-1.5 w-full text-xs text-text-muted hover:text-text py-1.5 border-t border-border-light"
-      >
-        默认大小
-      </button>
-    </div>
-  )
-}
-
-function EmojiControl({ editor, onOpen }: { editor: Editor; onOpen: () => void }) {
-  const [open, setOpen] = useState(false)
-  const wrapperRef = useRef<HTMLDivElement>(null)
-  useClickOutside(wrapperRef, () => setOpen(false))
-  return (
-    <div className="relative" ref={wrapperRef}>
-      <button
-        type="button"
-        title="插入表情"
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => {
-          const next = !open
-          setOpen(next)
-          if (next) onOpen()
-        }}
-        className={cn(
-          "w-8 h-8 flex items-center justify-center rounded-md text-text-secondary hover:text-text hover:bg-surface-hover transition-colors",
-          open && "bg-primary/15 text-primary",
-        )}
-      >
-        <SmilePlus className="w-4 h-4" />
-      </button>
-      {open && (
-        <EmojiPicker
-          groups={EMOJI_GROUPS}
-          onPick={(emoji) => {
-            editor.chain().focus().insertContent(emoji).run()
-            setOpen(false)
-          }}
-        />
-      )}
-    </div>
-  )
-}
-
-function EmojiPicker({
-  groups,
-  onPick,
-}: {
-  groups: { label: string; items: string[] }[]
-  onPick: (emoji: string) => void
-}) {
-  return (
-    <div className="absolute left-0 top-full mt-2 rounded-2xl bg-surface border border-border shadow-popover z-50 animate-fade-in-up w-[19rem] max-h-80 overflow-hidden flex flex-col">
-      {/* 头部 */}
-      <div className="px-3 py-2 border-b border-border-light flex items-center gap-1.5">
-        <span className="text-base leading-none">🎨</span>
-        <span className="text-xs font-semibold text-text">表情符号</span>
-        <span className="text-[10px] text-text-muted ml-auto">点击插入正文</span>
-      </div>
-
-      {/* 滚动区 */}
-      <div className="flex-1 overflow-y-auto px-3 py-2 emoji-picker-scroll">
-        {groups.map((g) => (
-          <div key={g.label} className="mb-3 last:mb-0">
-            <div className="text-[10px] font-medium text-text-muted px-1 mb-1.5 tracking-wide">
-              {g.label}
-            </div>
-            <div className="grid grid-cols-7 gap-1">
-              {g.items.map((e) => (
-                <button
-                  key={e}
-                  onClick={() => onPick(e)}
-                  className="w-8 h-8 flex items-center justify-center text-lg rounded-lg hover:bg-primary/10 hover:scale-110 active:scale-95 transition-all duration-100"
-                  title={e}
-                >
-                  {e}
-                </button>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   )
 }

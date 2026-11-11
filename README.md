@@ -121,7 +121,8 @@ services:
       - api
     restart: unless-stopped
     ports:
-      - "8080:80"
+      # 宿主机端口按实际环境调整；当前 NAS 上 8080 已被其他服务占用，本项目用 8280
+      - "8280:80"
 ```
 
 ### 4. 登录 GHCR 并拉取启动
@@ -132,7 +133,7 @@ docker compose pull
 docker compose up -d
 ```
 
-访问 `http://<NAS 或服务器 IP>:8080` 即可开始使用。
+访问 `http://<NAS 或服务器 IP>:8280` 即可开始使用（端口随上面的端口映射调整）。
 
 > 首次使用：可直接注册新账号，第一个注册的账号会成为管理员。
 

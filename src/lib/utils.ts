@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import type { JournalEntry } from "../types"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -29,6 +30,40 @@ export function formatRelative(date: string | Date): string {
   if (hours < 24) return `${hours} 小时前`
   if (days < 7) return `${days} 天前`
   return formatDate(date)
+}
+
+/**
+ * 取日记的逻辑日期（YYYY-MM-DD）：优先自定义 date，否则 fallback createdAt。
+ * 注意必须走 formatDate 按本地时区取日期，直接 slice 字符串会拿到 UTC 日期，
+ * 凌晨 0-8 点创建的日记会归到前一天。
+ */
+export function entryDate(e: JournalEntry): string {
+  return e.date ?? formatDate(e.createdAt)
+}
+
+/** 取日记逻辑日期的 Date 对象（本地时区零点），用于日历分组/排序 */
+export function entryDateObj(e: JournalEntry): Date {
+  const [y, m, day] = entryDate(e).split("-").map(Number)
+  return new Date(y, m - 1, day)
+}
+
+/**
+ * 词数统计：中文每字计一词 + 英文/数字按单词计。
+ * Tiptap 默认按空格分词，中文无空格会被整体算成 1 词，故自行统计。
+ */
+export function countWords(text: string): number {
+  const cjk = (text.match(/[\u4e00-\u9fff]/g) || []).length
+  const latin = (text.match(/[A-Za-z0-9]+(?:['’-][A-Za-z0-9]+)*/g) || []).length
+  return cjk + latin
+}
+
+/** Markdown/HTML 转纯文本预览：剥标签、清语法符号、压空白 */
+export function toPlainText(md: string): string {
+  return md
+    .replace(/<[^>]*>/g, "")
+    .replace(/[#*`>\-_!()\[\]]/g, "")
+    .replace(/\n+/g, " ")
+    .trim()
 }
 
 /**
