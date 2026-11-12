@@ -12,7 +12,8 @@ export interface OutlineItem {
 
 /**
  * 浮动大纲目录：悬浮在编辑区右侧，点击标题跳转到对应位置。
- * 收起态只剩一个竖排「目录」把手，不遮挡正文；手机端（窄屏）不显示。
+ * 收起态：桌面是竖排「目录」把手，手机是右上角图标按钮（与「完成」同排）。
+ * 展开态：桌面右侧浮层，手机近似全宽浮层。
  */
 export function OutlinePanel({ items, activeId, open, onToggle, onJump }: {
   items: OutlineItem[]
@@ -23,20 +24,35 @@ export function OutlinePanel({ items, activeId, open, onToggle, onJump }: {
 }) {
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={onToggle}
-        title="展开大纲目录"
-        className="hidden md:flex absolute right-3 top-1/2 -translate-y-1/2 z-50 flex-col items-center gap-1.5 px-1.5 py-3 rounded-l-xl border border-r-0 border-border-light bg-surface/95 backdrop-blur text-text-muted hover:text-primary hover:border-primary/30 transition-colors shadow-card"
-      >
-        <ListTree className="w-4 h-4" />
-        <span className="text-[11px] leading-tight [writing-mode:vertical-rl] tracking-widest">目录</span>
-      </button>
+      <>
+        {/* 手机端入口：右上角「完成」按钮左侧 */}
+        <button
+          type="button"
+          onClick={onToggle}
+          title="展开大纲目录"
+          className="md:hidden absolute top-3 right-20 z-40 flex items-center px-2.5 py-1.5 rounded-full border border-border-light bg-surface/90 backdrop-blur text-text-secondary hover:text-primary shadow-sm transition-colors"
+        >
+          <ListTree className="w-4 h-4" />
+        </button>
+        {/* 桌面端竖排把手 */}
+        <button
+          type="button"
+          onClick={onToggle}
+          title="展开大纲目录"
+          className="hidden md:flex absolute right-3 top-1/2 -translate-y-1/2 z-50 flex-col items-center gap-1.5 px-1.5 py-3 rounded-l-xl border border-r-0 border-border-light bg-surface/95 backdrop-blur text-text-muted hover:text-primary hover:border-primary/30 transition-colors shadow-card"
+        >
+          <ListTree className="w-4 h-4" />
+          <span className="text-[11px] leading-tight [writing-mode:vertical-rl] tracking-widest">目录</span>
+        </button>
+      </>
     )
   }
 
   return (
-    <div className="hidden md:flex absolute right-3 top-3 bottom-16 z-50 w-52 flex-col rounded-xl border border-border-light bg-surface/95 backdrop-blur shadow-popover animate-fade-in-up">
+    <>
+      {/* 手机端遮罩：点空白处收起 */}
+      <div className="md:hidden fixed inset-0 z-40 bg-black/10" onClick={onToggle} />
+      <div className="absolute z-50 flex flex-col left-3 right-3 top-14 bottom-16 w-auto md:left-auto md:right-3 md:top-3 md:w-52 rounded-xl border border-border-light bg-surface/95 backdrop-blur shadow-popover animate-fade-in-up">
       {/* 头部 */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border-light">
         <span className="flex items-center gap-1.5 text-xs font-semibold text-text">
@@ -77,5 +93,6 @@ export function OutlinePanel({ items, activeId, open, onToggle, onJump }: {
         })}
       </div>
     </div>
+    </>
   )
 }
