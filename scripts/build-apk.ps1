@@ -37,6 +37,15 @@ try {
         Write-Host "临时版本号: $v ($vc)"
     }
 
+    # 前端产物打进 APK：gradle 的 syncWebAssets 会把 dist 复制到 assets
+    Push-Location $repo
+    try {
+        & npm run build
+        if ($LASTEXITCODE -ne 0) { throw "前端构建失败，退出码 $LASTEXITCODE" }
+    } finally {
+        Pop-Location
+    }
+
     $env:JAVA_HOME = $jdk
     $env:GRADLE_USER_HOME = Join-Path $env:USERPROFILE ".gradle"
     Push-Location $android

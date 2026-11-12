@@ -25,6 +25,7 @@ import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -40,6 +41,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.webkit.WebViewAssetLoader;
 
 import org.json.JSONObject;
 
@@ -65,6 +67,9 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQ_CALENDAR_PERM = 1102;
     // 与 NAS 上 docker-compose 的宿主机端口保持一致（8080 已被其他服务占用）
     private static final String DEFAULT_PORT = "8280";
+    /** 本地页面 origin：页面从 APK 内置 assets 加载，只有 /api 走 NAS。 */
+    private static final String LOCAL_HOST = "appassets.androidplatform.net";
+    private static final String LOCAL_URL = "https://" + LOCAL_HOST + "/index.html";
 
     private WebView webView;
     private View setupView;
@@ -76,6 +81,8 @@ public class MainActivity extends AppCompatActivity {
     private final List<String> consoleErrors = new ArrayList<>();
     /** PDF 导出用的临时打印窗口。 */
     private WebView popupWebView;
+    /** 本地页面加载器：把 assets 目录映射到 LOCAL_HOST。 */
+    private WebViewAssetLoader assetLoader;
 
     private ValueCallback<Uri[]> fileCallback;
 
@@ -127,7 +134,7 @@ public class MainActivity extends AppCompatActivity {
                 restored = webView.restoreState(savedInstanceState) != null;
             }
             if (!restored) {
-                webView.loadUrl(baseUrl());
+                webView.loadUrl(LOCAL_URL);
             }
         }
     }
@@ -160,7 +167,7 @@ public class MainActivity extends AppCompatActivity {
                 .putString(KEY_PORT, server.port)
                 .apply();
         showWeb();
-        webView.loadUrl(baseUrl());
+        webView.loadUrl(LOCAL_URL);
     }
 
     private void showServerDialog() {
@@ -191,7 +198,7 @@ public class MainActivity extends AppCompatActivity {
             dialog.dismiss();
             errorView.setVisibility(View.GONE);
             showWeb();
-            webView.loadUrl(baseUrl());
+            webView.loadUrl(LOCAL_URL);
         }));
         dialog.show();
     }
@@ -280,11 +287,17 @@ public class MainActivity extends AppCompatActivity {
         s.setBuiltInZoomControls(true);
         s.setDisplayZoomControls(false);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+        // 页面来自 https://appassets...，API 是 http://NAS:8280，需放行混合内容
+        s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         s.setAllowFileAccess(false);
         s.setAllowContentAccess(true);
 
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, false);
+
+        // 本地页面：assets 根目录映射到 https://appassets.androidplatform.net/
+        assetLoader = new WebViewAssetLoader.Builder()
+                .addPathHandler("/", new WebViewAssetLoader.AssetsPathHandler(this))
+                .build();
 
         // 待办 → 系统日历同步桥（前端检测 window.LifeJournalCalendar 判断是否可用）
         webView.addJavascriptInterface(new CalendarJsBridge(), "LifeJournalCalendar");
@@ -293,8 +306,17 @@ public class MainActivity extends AppCompatActivity {
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                // 命中 appassets 域名时从 APK 内置 assets 读取，其余（NAS 的 /api、图片）走网络
+                return assetLoader.shouldInterceptRequest(request.getUrl());
+            }
+
+            @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri u = request.getUrl();
+                if (LOCAL_HOST.equalsIgnoreCase(u.getHost())) {
+                    return false; // 内置页面，留在应用内
+                }
                 String scheme = u.getScheme() == null ? "" : u.getScheme().toLowerCase(Locale.ROOT);
                 if ("http".equals(scheme) || "https".equals(scheme)) {
                     if (isSavedHost(u)) {
@@ -312,10 +334,13 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-                if (request.isForMainFrame()) {
-                    errorView.setVisibility(View.VISIBLE);
-                    errorMsg.setText("无法连接到 " + baseUrl() + "\n请确认 NAS 已启动、地址与手机在同一网络");
-                }
+                if (!request.isForMainFrame()) return;
+                errorView.setVisibility(View.VISIBLE);
+                // 主框架来自本地 assets：失败说明安装包资源异常，与网络无关
+                boolean local = LOCAL_HOST.equalsIgnoreCase(request.getUrl().getHost());
+                errorMsg.setText(local
+                        ? "本地页面加载失败，请重新安装应用"
+                        : "无法连接到 " + baseUrl() + "\n请确认 NAS 已启动、地址与手机在同一网络");
             }
 
             @Override
@@ -657,6 +682,12 @@ public class MainActivity extends AppCompatActivity {
         @JavascriptInterface
         public String getServerUrl() {
             return baseUrl();
+        }
+
+        /** API 根地址（含 /api）：内嵌页面不再与服务同源，前端据此发请求。 */
+        @JavascriptInterface
+        public String getApiBase() {
+            return baseUrl() + "api";
         }
 
         /** 打开原生「服务器设置」对话框（保存后自动重连）。 */

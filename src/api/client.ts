@@ -3,7 +3,20 @@
  * 所有 id 在后端为 int，这里统一转成 string 以匹配前端类型。
  */
 
-export const BASE = (import.meta.env.VITE_API_BASE as string) || "/api"
+/**
+ * API 根地址。APK 内页面从本地 assets 加载（origin 是 appassets.androidplatform.net），
+ * 不再与服务同源，需由原生桥给出绝对地址；Web/nginx 下仍走相对路径。
+ */
+const nativeBase = (() => {
+  try {
+    const bridge = (window as unknown as Record<string, any>).LifeJournalApp
+    return (bridge?.getApiBase?.() as string | undefined) ?? ""
+  } catch {
+    return ""
+  }
+})()
+
+export const BASE = (import.meta.env.VITE_API_BASE as string) || nativeBase || "/api"
 
 export const TOKEN_KEY = "ryjq_token"
 

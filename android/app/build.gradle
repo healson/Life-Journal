@@ -16,8 +16,8 @@ android {
         applicationId "com.healson.lifejournal"
         minSdk 29
         targetSdk 34
-        versionCode 13
-        versionName "0.6.15"
+        versionCode 1
+        versionName "1.0.0"
     }
 
     signingConfigs {
@@ -61,6 +61,16 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 
+// 把前端构建产物打进 APK：WebView 从 assets 本地加载页面，避免每次启动都从 NAS 拉取。
+// dist 由 npm run build 生成（scripts/build-apk.ps1 会在 gradle 之前执行）。
+tasks.register("syncWebAssets", Copy) {
+    from rootProject.file("../dist")
+    into file("src/main/assets")
+}
+tasks.named("preBuild") { dependsOn("syncWebAssets") }
+
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.7.0'
+    // WebViewAssetLoader：以可控 origin 从 assets 提供页面
+    implementation 'androidx.webkit:webkit:1.12.1'
 }

@@ -150,10 +150,14 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        # APK 内页面从本地 assets 加载，origin 固定为 appassets 域名
+        "https://appassets.androidplatform.net",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # WebView 从 https 页面请求 http 私网地址时，Chrome 可能先发私网访问预检
+    allow_private_network=True,
 )
 
 app.include_router(auth.router)
