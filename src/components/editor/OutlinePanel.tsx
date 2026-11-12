@@ -25,12 +25,12 @@ export function OutlinePanel({ items, activeId, open, onToggle, onJump }: {
   if (!open) {
     return (
       <>
-        {/* 手机端入口：右上角「完成」按钮左侧 */}
+        {/* 手机端入口：右上角「完成」按钮下方 */}
         <button
           type="button"
           onClick={onToggle}
           title="展开大纲目录"
-          className="md:hidden absolute top-3 right-20 z-40 flex items-center px-2.5 py-1.5 rounded-full border border-border-light bg-surface/90 backdrop-blur text-text-secondary hover:text-primary shadow-sm transition-colors"
+          className="md:hidden absolute top-14 right-3 z-40 flex items-center justify-center p-2 rounded-full border border-border-light bg-surface/90 backdrop-blur text-text-secondary hover:text-primary shadow-sm transition-colors"
         >
           <ListTree className="w-4 h-4" />
         </button>

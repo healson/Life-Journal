@@ -102,6 +102,8 @@ export function useOutline(
       el.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop
     box.scrollTo({ top: Math.max(0, top - 56), behavior: "smooth" })
     setActiveOutlineId(item.id)
+    // 窄屏屏幕小：跳转后立即收起浮层，避免挡住正文；桌面保持展开便于连续跳转
+    if (window.innerWidth < 768) setOutlineOpen(false)
   }
 
   // 切换日记时收起大纲目录，避免上一篇的展开状态带到下一篇
