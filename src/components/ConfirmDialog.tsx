@@ -1,6 +1,7 @@
 import { useEffect, useSyncExternalStore } from "react"
 import { createPortal } from "react-dom"
 import { Trash2, AlertTriangle, Info } from "lucide-react"
+import { registerBackHandler } from "../lib/backHandler"
 
 /**
  * 居中确认对话框 —— 替代浏览器原生 confirm()
@@ -87,6 +88,15 @@ function ConfirmHostInner() {
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
+  }, [snap.open])
+
+  // 系统返回：弹窗可见时先关闭弹窗
+  useEffect(() => {
+    if (!snap.open) return
+    return registerBackHandler(() => {
+      close(false)
+      return true
+    })
   }, [snap.open])
 
   if (!snap.open || !snap.options) return null

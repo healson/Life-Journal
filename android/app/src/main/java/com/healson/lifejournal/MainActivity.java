@@ -119,7 +119,13 @@ public class MainActivity extends AppCompatActivity {
                 } else if (webView.canGoBack()) {
                     webView.goBack();
                 } else {
-                    finish();
+                    // 把返回交给页面：JS 侧 LifeJournalBack 逐层关浮层/抽屉/回列表，
+                    // 返回 "1" 表示页面已消费本次返回，否则退出应用。
+                    webView.evaluateJavascript(
+                            "(window.LifeJournalBack&&window.LifeJournalBack())?1:0",
+                            v -> {
+                                if (!"1".equals(v)) finish();
+                            });
                 }
             }
         });

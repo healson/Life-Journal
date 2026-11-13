@@ -16,7 +16,7 @@ type StoreMethodKey = "lock" | "selectDate" |
   "selectEntry" | "createEntry" | "updateEntry" | "deleteEntry" | "togglePin" |
   "lockEntry" | "unlockEntry" | "relockEntry" |
   "startDraft" | "updateDraft" | "commitDraft" | "cancelDraft" |
-  "setFilter" | "setSearch" | "openConvertDrawer" | "closeConvertDrawer" |
+  "setFilter" | "setSearch" | "setTagFilter" | "openConvertDrawer" | "closeConvertDrawer" |
   "addTodos" | "updateTodo" | "deleteTodo"
 
 const patch = (key: StoreMethodKey) => {
@@ -34,6 +34,6 @@ const patch = (key: StoreMethodKey) => {
   "selectEntry", "createEntry", "updateEntry", "deleteEntry", "togglePin",
   "lockEntry", "unlockEntry", "relockEntry",
   "startDraft", "updateDraft", "commitDraft", "cancelDraft",
-  "setFilter", "setSearch", "openConvertDrawer", "closeConvertDrawer",
+  "setFilter", "setSearch", "setTagFilter", "openConvertDrawer", "closeConvertDrawer",
   "addTodos", "updateTodo", "deleteTodo",
 ].forEach((k) => patch(k as StoreMethodKey))

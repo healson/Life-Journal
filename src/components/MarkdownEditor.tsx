@@ -21,6 +21,7 @@ import { apiUploadImage } from "../api/client"
 import { useStore } from "../lib/observer"
 import { FontSize } from "../lib/fontSize"
 import { cn } from "../lib/utils"
+import { registerBackHandler } from "../lib/backHandler"
 import { OutlinePanel } from "./editor/OutlinePanel"
 import { useOutline } from "./editor/useOutline"
 import { useFloatingBar } from "./editor/useFloatingBar"
@@ -201,6 +202,15 @@ export function MarkdownEditor({ entryId, readOnly }: Props) {
   const { barRef, panelRef, barShown, moreOpen, setMoreOpen, barPos } =
     useFloatingBar(editor, scrollBoxRef, entryId)
 
+  // 系统返回：大纲目录展开时先收起
+  useEffect(() => {
+    if (!outlineOpen) return
+    return registerBackHandler(() => {
+      setOutlineOpen(false)
+      return true
+    })
+  }, [outlineOpen, setOutlineOpen])
+
   if (!editor) return null
   if (!entry) return null
 
@@ -223,7 +233,7 @@ export function MarkdownEditor({ entryId, readOnly }: Props) {
         entry={entry}
         html={editor.getHTML()}
         keyword={keyword}
-        onEdit={() => store.setSearch("")}
+        onEdit={() => { store.setSearch(""); store.setTagFilter("") }}
       />
     )
   }

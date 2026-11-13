@@ -1,8 +1,8 @@
 import { useMemo } from "react"
-import { Search, X, History, Calendar, CheckSquare, Menu, Sparkles } from "lucide-react"
+import { Search, X, History, Calendar, CheckSquare, Menu, Sparkles, RefreshCw } from "lucide-react"
 import { store } from "../store"
 import { useStore } from "../lib/observer"
-import { entryDate as entryDateStr, entryDateObj } from "../lib/utils"
+import { entryDate as entryDateStr, entryDateObj, cn } from "../lib/utils"
 import { EntryCard } from "./EntryCard"
 import { TodoMiniCard } from "./TodoMiniCard"
 import type { JournalEntry } from "../types"
@@ -25,21 +25,26 @@ export function EntryList({
     if (state.filterType !== "all") {
       list = list.filter((e) => e.entryType === state.filterType)
     }
-    // 搜索关键词统一由 store.searchQuery 驱动（标签点击 / 输入框 / 清除共用一份状态）
-    const q = state.searchQuery.toLowerCase().trim()
-    if (q) {
-      list = list.filter(
-        (e) =>
-          e.title.toLowerCase().includes(q) ||
-          e.plainText.toLowerCase().includes(q) ||
-          e.tags.some((t) => t.toLowerCase().includes(q)),
-      )
+    // 搜索关键词统一由 store.searchQuery 驱动（输入框 / 清除共用一份状态）
+    if (state.tagFilter) {
+      // 锚点：仅按标签精确筛选，不搜全文（与关键词搜索互斥）
+      list = list.filter((e) => e.tags.includes(state.tagFilter))
+    } else {
+      const q = state.searchQuery.toLowerCase().trim()
+      if (q) {
+        list = list.filter(
+          (e) =>
+            e.title.toLowerCase().includes(q) ||
+            e.plainText.toLowerCase().includes(q) ||
+            e.tags.some((t) => t.toLowerCase().includes(q)),
+        )
+      }
     }
     return [...list].sort((a, b) => {
       if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1
       return entryDateObj(b).getTime() - entryDateObj(a).getTime()
     })
-  }, [state.entries, state.filterType, state.searchQuery])
+  }, [state.entries, state.filterType, state.searchQuery, state.tagFilter])
 
   // 根据日期过滤 + 匹配的待办
   const dateFiltered = useMemo(() => {
@@ -116,6 +121,15 @@ export function EntryList({
           </div>
           <button
             type="button"
+            onClick={() => void store.refresh()}
+            disabled={state.booting}
+            title="刷新列表"
+            className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-text-muted hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-60"
+          >
+            <RefreshCw className={cn("w-4 h-4", state.booting && "animate-spin")} />
+          </button>
+          <button
+            type="button"
             onClick={() => store.openAIChat()}
             title="AI 搜索与总结"
             className="flex-shrink-0 h-9 px-3 rounded-lg bg-accent hover:bg-accent-light text-white text-sm font-medium flex items-center gap-1.5 transition-colors"
@@ -143,6 +157,19 @@ export function EntryList({
                 {dateFiltered.dayTodos.length > 0 && ` · ${dateFiltered.dayTodos.length} 待办`}
               </span>
             </>
+          ) : state.tagFilter ? (
+            <>
+              <span className="px-2 py-0.5 rounded-md bg-primary/15 text-primary font-medium">
+                # {state.tagFilter}
+              </span>
+              <button
+                onClick={() => store.setTagFilter("")}
+                className="text-text-muted hover:text-danger underline underline-offset-2"
+              >
+                清除
+              </button>
+              <span className="text-text-muted ml-auto">{allFiltered.length} 日记</span>
+            </>
           ) : (
             <span className="text-text-muted">共 {totalCount} 条 · 全部视图</span>
           )}
@@ -153,7 +180,7 @@ export function EntryList({
       <div className="flex-1 overflow-y-auto p-3 pb-32 space-y-4">
         {allFiltered.length === 0 && !hasDateFilter && (
           <div className="text-center py-12 text-text-muted text-sm">
-            {state.searchQuery ? "没搜到匹配的日记" : "还没有日记 ✨"}
+            {state.searchQuery || state.tagFilter ? "没搜到匹配的日记" : "还没有日记 ✨"}
           </div>
         )}
 

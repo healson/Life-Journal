@@ -26,6 +26,8 @@ interface State {
   selectedEntryId: string | null
   filterType: "all" | "daily" | "inspiration" | "behavior"
   searchQuery: string
+  /** 锚点标签精确筛选（与 searchQuery 互斥） */
+  tagFilter: string
   showConvertDrawer: boolean
   showAddTodo: boolean   // “办”按钮触发的全局“新建待办”标志
   aiChatOpen: boolean    // AI 搜索对话抽屉
@@ -45,6 +47,7 @@ const state: State = {
   selectedEntryId: null,
   filterType: "all",
   searchQuery: "",
+  tagFilter: "",
   showConvertDrawer: false,
   showAddTodo: false,
   aiChatOpen: false,
@@ -130,10 +133,16 @@ async function loadData(fromUnlock = false) {
     state.entries = entries.map(toClient)
     state.todos = todos.map(toTodo)
     syncCalendar()
-    if (state.isUnlocked && state.entries[0]) {
-      state.selectedEntryId = state.entries[0].id
+    // 后台刷新不打断编辑：仅首次加载（fromUnlock / 尚未选中）或当前条目被远端删除时才调整选中
+    const sel = state.selectedEntryId
+    if (fromUnlock) {
+      state.selectedEntryId = state.entries[0]?.id ?? null
+    } else if (!sel) {
+      state.selectedEntryId = state.entries[0]?.id ?? null
+    } else if (sel !== DRAFT_ID && !state.entries.some((e) => e.id === sel)) {
+      // 选中的日记已在其他设备上删除
+      state.selectedEntryId = null
     }
-    if (fromUnlock && state.entries[0]) state.selectedEntryId = state.entries[0].id
   } catch (err) {
     state.bootError = (err as Error).message
   } finally {
@@ -217,6 +226,7 @@ export const store = {
     } else {
       // 点日历日期 = 独立按日期筛选：清除标签/关键词搜索，避免两者叠加
       state.searchQuery = ""
+      state.tagFilter = ""
     }
   },
 
@@ -367,7 +377,9 @@ export const store = {
   },
 
   setFilter(type: State["filterType"]) { state.filterType = type },
-  setSearch(q: string) { state.searchQuery = q },
+  setSearch(q: string) { state.searchQuery = q; if (q.trim()) state.tagFilter = "" },
+  /** 锚点标签云：仅按标签精确筛选，与关键词搜索互斥 */
+  setTagFilter(tag: string) { state.tagFilter = tag; if (tag) state.searchQuery = "" },
   openConvertDrawer() { state.showConvertDrawer = true; emitChange() },
   closeConvertDrawer() { state.showConvertDrawer = false; emitChange() },
   openAddTodo() { state.showAddTodo = true; emitChange() },

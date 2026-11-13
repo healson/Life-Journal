@@ -13,7 +13,7 @@ import { PasswordHost } from "./components/PasswordDialog"
 import { store, DRAFT_ID } from "./store"
 import { useStore } from "./lib/observer"
 import { useIsMobile } from "./lib/useIsMobile"
-import { useEdgeSwipe } from "./lib/useEdgeSwipe"
+import { registerBackHandler } from "./lib/backHandler"
 import { cn, toPlainText } from "./lib/utils"
 import { ChevronLeft, Wand2, Check } from "lucide-react"
 
@@ -43,60 +43,38 @@ export default function App() {
     store.startDraft(`${n.getFullYear()}-${pad(n.getMonth() + 1)}-${pad(n.getDate())}`)
   }, [isMobile, state.isUnlocked, state.ready])
 
-  // 移动端：列表页左缘右滑「二次确认退出」的提示状态
+  // 移动端：列表页返回「二次确认退出」的提示状态
   const [exitHint, setExitHint] = useState(false)
   const exitHintTimer = useRef<number | null>(null)
 
-  // 全面屏手势（仅移动端）：
-  // - 抽屉开着：任意滑动先关抽屉
-  // - 编辑区左缘右滑 → 返回列表
-  // - 列表页右缘左滑 → 切回编辑区（今日空日记草稿）
-  // - 列表页左缘右滑 → 第一次提示，3 秒内再滑一次退出登录
-  // - 待办页左缘右滑 → 打开抽屉
-  useEdgeSwipe(
-    (edge) => {
-      if (drawerOpen) {
-        setDrawerOpen(false)
-        return
-      }
-      if (view === "todos") {
-        if (edge === "left") setDrawerOpen(true)
-        return
-      }
-      if (edge === "right") {
-        // 列表页右缘左滑 → 切回编辑区
-        if (!editing) {
-          const n = new Date()
-          const pad = (x: number) => String(x).padStart(2, "0")
-          store.selectEntry(null)
-          store.startDraft(`${n.getFullYear()}-${pad(n.getMonth() + 1)}-${pad(n.getDate())}`)
-        }
-        return
-      }
-      // edge === "left"：左缘右滑
-      if (editing) {
-        goBackToList()
-        return
-      }
-      // 列表页：二次确认退出登录
-      if (exitHint) {
-        if (exitHintTimer.current) window.clearTimeout(exitHintTimer.current)
-        exitHintTimer.current = null
-        setExitHint(false)
-        store.lock()
-        return
-      }
-      setExitHint(true)
-      if (exitHintTimer.current) window.clearTimeout(exitHintTimer.current)
-      exitHintTimer.current = window.setTimeout(() => {
-        setExitHint(false)
-        exitHintTimer.current = null
-      }, 3000)
-    },
-    isMobile,
-  )
+  // 回前台自动同步：电脑端新增/修改的日记，切回应用即出现（15s 节流）。
+  // draft 独立于 entries，刷新不会覆盖正在编辑的内容。
+  useEffect(() => {
+    if (!state.isUnlocked) return
+    let last = 0
+    const maybeRefresh = () => {
+      if (document.visibilityState !== "visible" || !store.state.isUnlocked) return
+      const now = Date.now()
+      if (now - last < 15_000) return
+      last = now
+      void store.refresh()
+    }
+    document.addEventListener("visibilitychange", maybeRefresh)
+    window.addEventListener("focus", maybeRefresh)
+    return () => {
+      document.removeEventListener("visibilitychange", maybeRefresh)
+      window.removeEventListener("focus", maybeRefresh)
+    }
+  }, [state.isUnlocked])
 
-  // 未登录时显示登录页
+  // 系统返回（安卓手势返回 / 返回键）：原生 OnBackPressedCallback 把事件交给
+  // window.LifeJournalBack()（见 lib/backHandler）。弹窗/菜单等浮层自行注册局部
+  // 关闭器（LIFO 先执行），这里注册页面级分发器作为兜底。
+  const backRef = useRef<() => boolean>(() => false)
+  useEffect(() => registerBackHandler(() => backRef.current()), [])
+
+  // 未登录时显示登录页（系统返回交回原生 → finish 退出）
+  backRef.current = () => false
   if (!state.isUnlocked) {
     return (
       <>
@@ -111,8 +89,8 @@ export default function App() {
   // 草稿态：selectedEntryId 为 DRAFT_ID 时，右侧编辑器绑定 state.draft
   const isDrafting = state.selectedEntryId === DRAFT_ID && !!state.draft
   const editing = selectedEntry || isDrafting
-  // 搜索状态下进入日记：编辑器锁定只读（正文关键词高亮，可点「编辑」退出）
-  const searchActive = !!state.searchQuery?.trim()
+  // 搜索 / 锚点标签筛选态进入日记：编辑器锁定只读（正文关键词高亮，可点「编辑」退出）
+  const searchActive = !!state.searchQuery?.trim() || !!state.tagFilter
   // 已锁定且本会话尚未输入密码的日记：右侧显示密码查看页
   const lockedHidden =
     !!selectedEntry?.isLocked && !state.sessionUnlockedIds.includes(selectedEntry.id)
@@ -128,13 +106,38 @@ export default function App() {
     store.cancelDraft()
   }
 
+  // 页面级返回分发（浮层局部关闭器之外的兜底，顺序：抽屉 → 页面导航 → 退出登录）
+  backRef.current = () => {
+    if (state.showConvertDrawer) { store.closeConvertDrawer(); return true }
+    if (state.aiChatOpen) { store.closeAIChat(); return true }
+    if (state.showAddTodo) { store.closeAddTodo(); return true }
+    if (drawerOpen) { setDrawerOpen(false); return true }
+    if (view === "todos") { setView("entries"); return true }
+    if (editing) { goBackToList(); return true }
+    // 列表页：第一次提示，3 秒内再按一次退出登录
+    if (exitHint) {
+      if (exitHintTimer.current) window.clearTimeout(exitHintTimer.current)
+      exitHintTimer.current = null
+      setExitHint(false)
+      store.lock()
+      return true
+    }
+    setExitHint(true)
+    if (exitHintTimer.current) window.clearTimeout(exitHintTimer.current)
+    exitHintTimer.current = window.setTimeout(() => {
+      setExitHint(false)
+      exitHintTimer.current = null
+    }, 3000)
+    return true
+  }
+
   return (
     <div className="h-full flex bg-background overflow-hidden">
-      {/* 移动端手势退出提示（列表页左缘右滑第一次触发） */}
+      {/* 移动端退出提示（列表页系统返回第一次触发） */}
       {isMobile && exitHint && (
         <div className="fixed top-8 inset-x-0 flex justify-center z-[60] pointer-events-none">
           <div className="px-4 py-2 rounded-full bg-black/70 text-white text-xs shadow-lg">
-            再向右滑一次退出登录
+            再按一次返回键退出登录
           </div>
         </div>
       )}
@@ -267,6 +270,15 @@ function MobileDoneButton({ onDone, readOnly }: { onDone: () => void; readOnly?:
   useEffect(() => {
     setOpen(false)
   }, [state.selectedEntryId])
+
+  // 系统返回：菜单展开时先收起菜单
+  useEffect(() => {
+    if (!open) return
+    return registerBackHandler(() => {
+      setOpen(false)
+      return true
+    })
+  }, [open])
 
   if (readOnly) return <MobileBackButton onClick={onDone} />
 

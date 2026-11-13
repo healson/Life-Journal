@@ -90,7 +90,7 @@ export function Sidebar({ onViewChange }: Props) {
           <div className="grid grid-cols-2 gap-2">
             {/* 日记总计 → 回到完整列表（清日期过滤与标签/关键词搜索） */}
             <button
-              onClick={() => { store.setSearch(""); store.selectDate(null); onViewChange("entries") }}
+              onClick={() => { store.setSearch(""); store.setTagFilter(""); store.selectDate(null); onViewChange("entries") }}
               className="text-left p-2.5 rounded-lg bg-primary/5 border border-primary/10 hover:bg-primary/10 hover:border-primary/20 transition-colors cursor-pointer"
             >
               <div className="text-xs text-text-secondary">日记总计</div>
@@ -149,7 +149,7 @@ export function Sidebar({ onViewChange }: Props) {
                   onClick={() => {
                     store.selectDate(null) // 标签筛选独立于日期：先清日期过滤与草稿
                     store.setFilter("all") // 标签筛选独立于分类：清除分类筛选
-                    store.setSearch(t.tag)
+                    store.setTagFilter(t.tag) // 锚点：仅按标签精确筛选，不走全文搜索
                     onViewChange("entries")
                   }}
                   className="px-2 py-0.5 rounded-md bg-surface-hover hover:bg-primary/15 hover:text-primary transition-colors text-text-secondary"

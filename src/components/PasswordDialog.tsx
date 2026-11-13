@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { createPortal } from "react-dom"
 import { Lock } from "lucide-react"
+import { registerBackHandler } from "../lib/backHandler"
 
 /**
  * 密码输入对话框 —— 治愈系圆角样式，Promise 式调用。
@@ -75,6 +76,15 @@ function PasswordHostInner() {
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
   }, [snap.open, value])
+
+  // 系统返回：弹窗可见时先关闭弹窗
+  useEffect(() => {
+    if (!snap.open) return
+    return registerBackHandler(() => {
+      close(null)
+      return true
+    })
+  }, [snap.open])
 
   if (!snap.open || !snap.options) return null
 
