@@ -192,6 +192,10 @@ export const store = {
   lock() {
     stopIdleTimer()
     state.isUnlocked = false
+    // 凡是落在登录页（闲置超时/手动退出/token 失效），启动校验都视为已结束。
+    // 否则带 token 启动、被闲置超时锁到登录页后 bootChecked 恒为 false，
+    // 再次登录成功会卡在启动页出不来。
+    state.bootChecked = true
     state.currentUser = null
     state.entries = []
     state.todos = []
