@@ -1,6 +1,6 @@
 import type { JournalEntry, Todo } from "./types"
 import { emitChange } from "./lib/events"
-import { resetLastActivity, startIdleTimer, stopIdleTimer } from "./lib/idle"
+import { isIdleExpired, resetLastActivity, startIdleTimer, stopIdleTimer } from "./lib/idle"
 import { scheduleCalendarSync } from "./lib/calendarBridge"
 import { toPlainText } from "./lib/utils"
 import {
@@ -34,6 +34,8 @@ interface State {
   draft: JournalEntry | null
   booting: boolean       // 数据加载中
   ready: boolean         // 数据是否已加载完成（loadData 结束）
+  /** 启动校验完成：有 token 时验证有效性期间保持 false，期间只显示启动页，绝不闪主界面 */
+  bootChecked: boolean
   bootError: string | null
   sessionUnlockedIds: string[]  // 会话内已输入密码解锁的日记 id（刷新/登出后失效）
 }
@@ -54,6 +56,7 @@ const state: State = {
   draft: null,
   booting: false,
   ready: false,
+  bootChecked: !getToken(),
   bootError: null,
   sessionUnlockedIds: [],
 }
@@ -200,14 +203,20 @@ export const store = {
 
   /** 应用启动时若已有 token，校验后后台拉取数据；token 失效则自动登出回登录页 */
   async init() {
-    if (!state.isUnlocked || !getToken()) return
-    try {
-      await this.refreshMe()
-    } catch {
-      // token 无效 / 后端不可达：退回登录页，清空残留会话
+    if (!state.isUnlocked || !getToken()) {
+      state.bootChecked = true
+      emitChange()
+      return
+    }
+    // refreshMe 内部吞掉所有错误：失败时 currentUser 为 null（token 失效 / 后端不可达）
+    await this.refreshMe()
+    // 校验完成才允许渲染主界面；无效则直接回登录页，保证登录时绝不先闪主界面
+    state.bootChecked = true
+    if (!state.currentUser) {
       this.lock()
       return
     }
+    emitChange()
     await loadData()
     startIdleTimer(() => this.lock(), 10)
   },
@@ -447,7 +456,13 @@ export const store = {
   },
 }
 
-// 已解锁（历史会话）且有 token：启动即后台加载数据
+// 已解锁（历史会话）且有 token：
+// - 闲置超时（超过 10 分钟无操作）→ 直接登出回登录页，启动即登录窗口，不闪主界面
+// - 否则启动即校验 token 并后台加载数据
 if (state.isUnlocked && getToken()) {
-  void store.init()
+  if (isIdleExpired()) {
+    store.lock()
+  } else {
+    void store.init()
+  }
 }

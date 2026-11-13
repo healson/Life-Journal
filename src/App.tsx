@@ -73,6 +73,20 @@ export default function App() {
   const backRef = useRef<() => boolean>(() => false)
   useEffect(() => registerBackHandler(() => backRef.current()), [])
 
+  // 启动校验期：有 token 但尚未验证有效性 → 只显示启动页。
+  // 校验通过进主界面，失败切登录页——保证登录时绝不先闪主界面。
+  if (state.isUnlocked && !state.bootChecked) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center gap-4 bg-background">
+        <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center shadow-lg">
+          <span className="text-white text-2xl">📓</span>
+        </div>
+        <span className="text-lg font-bold text-text">人生记趣录</span>
+        <div className="w-5 h-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      </div>
+    )
+  }
+
   // 未登录时显示登录页（系统返回交回原生 → finish 退出）
   backRef.current = () => false
   if (!state.isUnlocked) {

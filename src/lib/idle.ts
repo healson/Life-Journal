@@ -29,6 +29,16 @@ export function resetLastActivity() {
   persistLastActivity()
 }
 
+/** 启动前检查：距上次活动是否已超过闲置时长（与 startIdleTimer 调用处的 10 分钟一致）。
+ * 用于在渲染主界面前先判定——闲置超时的会话直接进登录页，不闪主界面。 */
+export function isIdleExpired(timeoutMinutes = 10): boolean {
+  const persisted = safeStorage?.getItem(LAST_ACTIVITY_KEY)
+  if (!persisted) return false
+  const last = Number(persisted)
+  if (!last) return false
+  return Date.now() - last > timeoutMinutes * 60 * 1000
+}
+
 function onActivity() {
   lastActivity = Date.now()
   persistLastActivity()
