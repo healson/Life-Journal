@@ -13,8 +13,21 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))  # 24h
 
 
+# bcrypt 轮数：12 轮的校验耗时约 750ms，是登录链路里最大的单项耗时（网络请求合计才约 70ms）。
+# 10 轮仍是主流安全建议下限（OWASP），校验耗时约为 12 轮的 1/4。
+ROUNDS = 10
+
+
 def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(rounds=ROUNDS)).decode("utf-8")
+
+
+def needs_rehash(hashed: str) -> bool:
+    """旧账号按旧轮数存储（如 12 轮），登录成功后按当前轮数透明重算，让存量账号也提速。"""
+    try:
+        return int(hashed.split("$")[2]) != ROUNDS
+    except (IndexError, ValueError):
+        return False
 
 
 def verify_password(plain: str, hashed: str) -> bool:

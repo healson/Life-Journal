@@ -42,6 +42,10 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
     user = auth.get_user_by_username(db, body.username)
     if not user or not auth.verify_password(body.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户名或密码错误")
+    # 透明重算：老账号是旧轮数的 hash，校验慢，登录成功后按当前轮数重建，下次登录即提速
+    if auth.needs_rehash(user.hashed_password):
+        user.hashed_password = auth.hash_password(body.password)
+        db.commit()
     token = auth.create_access_token(user.id, user.username)
     return TokenResponse(access_token=token)
 

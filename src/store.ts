@@ -133,7 +133,14 @@ async function loadData(fromUnlock = false) {
       apiListEntries(),
       apiListTodos(),
     ])
-    state.entries = entries.map(toClient)
+    const remote = entries.map(toClient)
+    // 保留本地未同步条目（createEntry 的 POST 尚未返回）：否则自动同步刷新会把刚创建的
+    // 日记从列表冲掉，并把选中误判为「远端已删除」而清空右侧编辑区
+    const remoteIds = new Set(remote.map((e) => e.id))
+    const pendingLocal = state.entries.filter(
+      (e) => e.id.startsWith("tmp_") && !remoteIds.has(e.id),
+    )
+    state.entries = [...pendingLocal, ...remote]
     state.todos = todos.map(toTodo)
     syncCalendar()
     // 后台刷新不打断编辑：仅首次加载（fromUnlock / 尚未选中）或当前条目被远端删除时才调整选中
@@ -172,8 +179,8 @@ export const store = {
     const r = await apiLogin(username, password)
     setToken(r.access_token)
     state.isUnlocked = true
-    await this.refreshMe()
-    await loadData(true)
+    // refreshMe 与数据加载无依赖，并行发出：串行时登录后要多等一个往返
+    await Promise.all([this.refreshMe(), loadData(true)])
     resetLastActivity() // 登录前无活动监听，旧时间戳可能已超时，先重置避免被秒登出
     startIdleTimer(() => this.lock(), 10)
   },
@@ -182,8 +189,7 @@ export const store = {
     const r = await apiRegister(username, password)
     setToken(r.access_token)
     state.isUnlocked = true
-    await this.refreshMe()
-    await loadData(true)
+    await Promise.all([this.refreshMe(), loadData(true)])
     resetLastActivity()
     startIdleTimer(() => this.lock(), 10)
   },
