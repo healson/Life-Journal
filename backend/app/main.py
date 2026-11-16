@@ -158,6 +158,8 @@ app.add_middleware(
     allow_headers=["*"],
     # WebView 从 https 页面请求 http 私网地址时，Chrome 可能先发私网访问预检
     allow_private_network=True,
+    # 预检结果缓存 1 小时：APK 内嵌页面跨域，否则每个带 Authorization 的请求都先发一次 OPTIONS
+    max_age=3600,
 )
 
 app.include_router(auth.router)
